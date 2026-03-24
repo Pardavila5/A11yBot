@@ -1,0 +1,43 @@
+# Root repository ignores for A11yBot
+
+# Dependencies
+**/node_modules/
+
+# Build outputs
+**/dist/
+**/build/
+**/coverage/
+**/.nyc_output/
+
+# Runtime and local databases
+**/*.log
+**/logs/
+**/pids/
+**/*.pid
+**/*.pid.lock
+**/prisma/dev.db
+**/prisma/dev.db-journal
+**/prisma/dev-e2e.db
+**/prisma/dev-e2e.db-journal
+
+# Environment files
+**/.env
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+
+# IDE and OS files
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Temp files
+**/.temp/
+**/.tmp/
+**/tmp/
+**/report.*.*.*.*.json

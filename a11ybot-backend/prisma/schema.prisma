@@ -1,0 +1,77 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Website {
+  id        Int      @id @default(autoincrement())
+  url       String   @unique
+  audits    Audit[]
+}
+
+model Audit {
+  id          Int      @id @default(autoincrement())
+  timestamp   DateTime
+  websiteId   Int
+  website     Website  @relation(fields: [websiteId], references: [id])
+  status      String   @default("completed")
+  notes       String?
+  rawJson     Json
+  rules       Rule[]
+  occurrences Occurrence[]
+  aiTraces    AiTrace[]
+}
+
+model Rule {
+  id          Int        @id @default(autoincrement())
+  auditId     Int
+  ruleId      String
+  impact      String?
+  description String
+  help        String
+  helpUrl     String
+  wcag        String
+  type        String
+  audit       Audit      @relation(fields: [auditId], references: [id])
+  occurrences Occurrence[]
+}
+
+model Occurrence {
+  id             Int       @id @default(autoincrement())
+  auditId        Int
+  ruleRef        Int
+  htmlSnippet    String
+  target         String
+  failureSummary String?
+
+  audit Audit @relation(fields: [auditId], references: [id])
+  rule  Rule  @relation(fields: [ruleRef], references: [id])
+}
+
+model AiTrace {
+  id              Int      @id @default(autoincrement())
+  createdAt       DateTime @default(now())
+  operation       String
+  source          String
+  model           String?
+  auditId         Int?
+  compareOldAudit Int?
+  compareNewAudit Int?
+  ruleId          String?
+  latencyMs       Int
+  success         Boolean
+  errorMessage    String?
+  requestMeta     Json
+  responseMeta    Json
+
+  audit Audit? @relation(fields: [auditId], references: [id])
+
+  @@index([createdAt])
+  @@index([operation])
+  @@index([source])
+  @@index([auditId])
+}
