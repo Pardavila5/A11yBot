@@ -3,6 +3,10 @@ import { IsBoolean, IsInt, IsOptional, Max, Min } from 'class-validator';
 export class AiAuditOptionsDto {
   @IsOptional()
   @IsBoolean()
+  reuseOnly?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   forceHeuristic?: boolean;
 
   @IsOptional()

@@ -27,7 +27,7 @@ A11yBot es un sistema de auditoria automatica de accesibilidad web para TFG:
 
 - La raiz `A11yBot/` es el punto unico de versionado del proyecto.
 - El backend expone auditoria, comparacion, runtime y capa IA con trazas persistentes.
-- El frontend cubre dashboard, historico, detalle, comparacion y pantalla `/ops`.
+- El frontend cubre dashboard, historico, detalle, comparacion, visualizacion A/B de IA y pantalla `/ops`.
 - La salida IA mantiene modo dual:
   - sin `OPENAI_API_KEY`: heuristico local estable;
   - con `OPENAI_API_KEY`: enriquecimiento remoto con fallback automatico.
@@ -37,7 +37,7 @@ A11yBot es un sistema de auditoria automatica de accesibilidad web para TFG:
 
 1. Seguridad y fiabilidad backend (SSRF, timeouts, reintentos y cola robusta).
 2. Observabilidad y calidad (metricas por fase, logs estructurados, tests).
-3. IA util y evaluable para memoria (explicacion, priorizacion, sugerencias y A/B).
+3. IA util y evaluable para memoria (explicacion, priorizacion, sugerencias y A/B ya visible en frontend).
 
 ## Riesgos a vigilar
 

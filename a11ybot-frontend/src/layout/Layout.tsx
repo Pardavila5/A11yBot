@@ -60,7 +60,7 @@ export default function Layout() {
               : 'rgba(246,247,251,0.76)',
         })}
       >
-        <Container maxWidth="lg">
+        <Container maxWidth="xl">
           <Toolbar disableGutters sx={{ py: 1, gap: 2 }}>
             <Box sx={{ minWidth: 0 }}>
               <Typography
@@ -77,7 +77,7 @@ export default function Layout() {
                 A11yBot
               </Typography>
               <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>
-                Auditoria automatica de accesibilidad
+                Auditoría automática de accesibilidad
               </Typography>
             </Box>
 
@@ -105,12 +105,12 @@ export default function Layout() {
       </AppBar>
 
       <main id="main">
-        <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Container maxWidth="xl" sx={{ py: 4 }}>
           <Outlet />
         </Container>
       </main>
 
-      <Container maxWidth="lg" sx={{ py: 2 }}>
+      <Container maxWidth="xl" sx={{ py: 2 }}>
         <Typography variant="caption" color="text.secondary">
           Backend: NestJS + Playwright + axe-core · DB: Prisma/SQLite
         </Typography>

@@ -13,7 +13,7 @@ A11yBot es un TFG orientado a auditoria automatica de accesibilidad web con evid
 
 - Backend: NestJS, TypeScript, Prisma, SQLite, Playwright, axe-core.
 - Frontend: React, TypeScript, Vite, Material UI.
-- IA: capa opcional via OpenAI con fallback heuristico y persistencia de `AiTrace`.
+- IA: capa opcional via OpenAI con fallback heuristico, persistencia de `AiTrace` y comparativa A/B visible en frontend.
 
 ## Arranque rapido
 

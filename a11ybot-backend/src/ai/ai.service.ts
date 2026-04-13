@@ -23,6 +23,8 @@ type AiRecommendation = {
   ruleId?: string;
 };
 
+type AiRuleType = 'violations' | 'passes' | 'incomplete';
+
 type TopViolation = {
   ruleId: string;
   impact: string | null;
@@ -39,6 +41,51 @@ type OpenAiAttempt = {
   httpStatus: number | null;
   errorMessage: string | null;
 };
+
+type AiResolution = {
+  attempted: boolean;
+  status: string | null;
+  usedFallback: boolean;
+  reason: string | null;
+  latencyMs: number | null;
+};
+
+type AuditSummaryArtifact = {
+  generatedAt: string;
+  source: AiSource;
+  model: string | null;
+  resolution: AiResolution;
+  executiveSummary: string;
+  technicalSummary: string;
+  recommendations: AiRecommendation[];
+  topViolations: TopViolation[];
+};
+
+type CompareSummaryArtifact = {
+  generatedAt: string;
+  source: AiSource;
+  model: string | null;
+  resolution: AiResolution;
+  executiveSummary: string;
+  technicalSummary: string;
+  recommendations: AiRecommendation[];
+};
+
+type RuleExplanationArtifact = {
+  generatedAt: string;
+  source: AiSource;
+  model: string | null;
+  resolution: AiResolution;
+  explanation: {
+    summary: string;
+    whyItMatters: string;
+    fixes: string[];
+    testChecklist: string[];
+  };
+};
+
+const AB_MAX_RECOMMENDATIONS = 3;
+const AB_MAX_RULES = 5;
 
 @Injectable()
 export class AiService implements OnModuleInit {
@@ -142,8 +189,16 @@ export class AiService implements OnModuleInit {
 
   async getAuditSummaryAB(auditId: number) {
     const [heuristic, assisted] = await Promise.all([
-      this.getAuditSummary(auditId, { forceHeuristic: true }),
-      this.getAuditSummary(auditId, { forceHeuristic: false }),
+      this.getAuditSummary(auditId, {
+        forceHeuristic: true,
+        maxRecommendations: AB_MAX_RECOMMENDATIONS,
+        maxRules: AB_MAX_RULES,
+      }),
+      this.getAuditSummary(auditId, {
+        forceHeuristic: false,
+        maxRecommendations: AB_MAX_RECOMMENDATIONS,
+        maxRules: AB_MAX_RULES,
+      }),
     ]);
 
     return {
@@ -156,14 +211,22 @@ export class AiService implements OnModuleInit {
         sourceChanged: assisted.source !== heuristic.source,
         recommendationDelta:
           assisted.recommendations.length - heuristic.recommendations.length,
+        fallbackTriggered: assisted.resolution.usedFallback,
+        assistedStatus: assisted.resolution.status,
       },
     };
   }
 
   async getComparisonSummaryAB(oldId: number, newId: number) {
     const [heuristic, assisted] = await Promise.all([
-      this.getComparisonSummary(oldId, newId, { forceHeuristic: true }),
-      this.getComparisonSummary(oldId, newId, { forceHeuristic: false }),
+      this.getComparisonSummary(oldId, newId, {
+        forceHeuristic: true,
+        maxRecommendations: AB_MAX_RECOMMENDATIONS,
+      }),
+      this.getComparisonSummary(oldId, newId, {
+        forceHeuristic: false,
+        maxRecommendations: AB_MAX_RECOMMENDATIONS,
+      }),
     ]);
 
     return {
@@ -177,6 +240,8 @@ export class AiService implements OnModuleInit {
         sourceChanged: assisted.source !== heuristic.source,
         recommendationDelta:
           assisted.recommendations.length - heuristic.recommendations.length,
+        fallbackTriggered: assisted.resolution.usedFallback,
+        assistedStatus: assisted.resolution.status,
       },
     };
   }
@@ -186,8 +251,6 @@ export class AiService implements OnModuleInit {
       `AI audit_summary request: auditId=${auditId} forceHeuristic=${options.forceHeuristic === true}`,
     );
 
-    const startedAt = Date.now();
-    const attempt = this.newAttempt();
     const audit = await this.prisma.audit.findUnique({
       where: { id: auditId },
       include: { website: true, rules: true, occurrences: true },
@@ -197,10 +260,55 @@ export class AiService implements OnModuleInit {
     }
 
     const violations = audit.rules.filter((r) => r.type === 'violations');
+    const topViolationLimit = options.maxRules ?? AB_MAX_RULES;
+    const cached = await this.findReusableAuditSummaryTrace(
+      auditId,
+      options.forceHeuristic === true,
+    );
+    if (cached) {
+      this.logger.log(`AI audit_summary reuse: auditId=${auditId} traceId=${cached.traceId}`);
+      return {
+        traceId: cached.traceId,
+        source: cached.artifact.source,
+        generatedAt: cached.artifact.generatedAt,
+        model: cached.artifact.model,
+        resolution: cached.artifact.resolution,
+        audit: {
+          id: audit.id,
+          url: audit.website.url,
+          timestamp: audit.timestamp,
+          status: (audit as any).status ?? null,
+        },
+        metrics: {
+          rules: {
+            total: audit.rules.length,
+            violations: violations.length,
+            passes: audit.rules.filter((r) => r.type === 'passes').length,
+            incomplete: audit.rules.filter((r) => r.type === 'incomplete').length,
+          },
+          occurrences: audit.occurrences.length,
+          topViolations: cached.artifact.topViolations.slice(0, topViolationLimit),
+        },
+        executiveSummary: cached.artifact.executiveSummary,
+        technicalSummary: cached.artifact.technicalSummary,
+        recommendations: this.limitRecommendations(
+          cached.artifact.recommendations,
+          options.maxRecommendations,
+        ),
+      };
+    }
+    if (options.reuseOnly) {
+      throw new NotFoundException(
+        `No existe resumen IA persistido para la auditoría ${auditId}`,
+      );
+    }
+
+    const startedAt = Date.now();
+    const attempt = this.newAttempt();
     const topViolations = this.getTopViolations(
       violations,
       audit.occurrences,
-      options.maxRules,
+      topViolationLimit,
     );
     const ruleIdsForSummary =
       topViolations.length > 0
@@ -209,6 +317,7 @@ export class AiService implements OnModuleInit {
     const heuristic = this.heuristicAudit(
       audit.website.url,
       violations.length,
+      audit.rules.filter((r) => r.type === 'incomplete').length,
       audit.occurrences.length,
       topViolations,
     );
@@ -217,7 +326,7 @@ export class AiService implements OnModuleInit {
     let model: string | null = null;
     let executiveSummary = heuristic.executiveSummary;
     let technicalSummary = heuristic.technicalSummary;
-    let recommendations = heuristic.recommendations;
+    let fullRecommendations = heuristic.recommendations;
 
     if (options.forceHeuristic) {
       attempt.status = 'forced_heuristic';
@@ -227,8 +336,11 @@ export class AiService implements OnModuleInit {
         {
           auditId,
           url: audit.website.url,
-          rules: ruleIdsForSummary,
+          violationRules: violations.length,
+          incompleteRules: audit.rules.filter((r) => r.type === 'incomplete').length,
+          totalRules: audit.rules.length,
           occurrences: audit.occurrences.length,
+          prioritizedRuleIds: ruleIdsForSummary,
           topViolations,
         },
         attempt,
@@ -239,7 +351,7 @@ export class AiService implements OnModuleInit {
         model = ai.model;
         executiveSummary = ai.executiveSummary;
         technicalSummary = ai.technicalSummary;
-        recommendations =
+        fullRecommendations =
           ai.recommendations.length > 0
             ? ai.recommendations
             : heuristic.recommendations;
@@ -252,8 +364,20 @@ export class AiService implements OnModuleInit {
       }
     }
 
-    recommendations = this.limitRecommendations(
-      recommendations,
+    const resolution = this.buildResolution(source, attempt);
+    const artifact: AuditSummaryArtifact = {
+      generatedAt: new Date().toISOString(),
+      source,
+      model,
+      resolution,
+      executiveSummary,
+      technicalSummary,
+      recommendations: fullRecommendations,
+      topViolations,
+    };
+
+    const recommendations = this.limitRecommendations(
+      artifact.recommendations,
       options.maxRecommendations,
     );
 
@@ -271,11 +395,13 @@ export class AiService implements OnModuleInit {
       requestMeta: {
         forceHeuristic: options.forceHeuristic ?? false,
         maxRecommendations: options.maxRecommendations ?? null,
-        maxRules: options.maxRules ?? null,
+        maxRules: topViolationLimit,
       },
       responseMeta: {
         openAiAttempt: attempt,
         recommendations: recommendations.length,
+        artifactVersion: 1,
+        artifact,
       },
     });
 
@@ -283,9 +409,10 @@ export class AiService implements OnModuleInit {
 
     return {
       traceId,
-      source,
-      generatedAt: new Date().toISOString(),
-      model,
+      source: artifact.source,
+      generatedAt: artifact.generatedAt,
+      model: artifact.model,
+      resolution,
       audit: {
         id: audit.id,
         url: audit.website.url,
@@ -300,10 +427,10 @@ export class AiService implements OnModuleInit {
           incomplete: audit.rules.filter((r) => r.type === 'incomplete').length,
         },
         occurrences: audit.occurrences.length,
-        topViolations,
+        topViolations: artifact.topViolations,
       },
-      executiveSummary,
-      technicalSummary,
+      executiveSummary: artifact.executiveSummary,
+      technicalSummary: artifact.technicalSummary,
       recommendations,
     };
   }
@@ -317,9 +444,35 @@ export class AiService implements OnModuleInit {
       `AI compare_summary request: oldId=${oldId} newId=${newId} forceHeuristic=${options.forceHeuristic === true}`,
     );
 
+    const compare = await this.auditService.compareAudits(oldId, newId);
+    const cached = await this.findReusableCompareSummaryTrace(
+      oldId,
+      newId,
+      options.forceHeuristic === true,
+    );
+    if (cached) {
+      this.logger.log(
+        `AI compare_summary reuse: oldId=${oldId} newId=${newId} traceId=${cached.traceId}`,
+      );
+      return {
+        traceId: cached.traceId,
+        source: cached.artifact.source,
+        generatedAt: cached.artifact.generatedAt,
+        model: cached.artifact.model,
+        resolution: cached.artifact.resolution,
+        audits: compare.audits,
+        summary: compare.summary,
+        executiveSummary: cached.artifact.executiveSummary,
+        technicalSummary: cached.artifact.technicalSummary,
+        recommendations: this.limitRecommendations(
+          cached.artifact.recommendations,
+          options.maxRecommendations,
+        ),
+      };
+    }
+
     const startedAt = Date.now();
     const attempt = this.newAttempt();
-    const compare = await this.auditService.compareAudits(oldId, newId);
     const heuristic = this.heuristicCompare(
       compare.summary.newViolationRules,
       compare.summary.resolvedViolationRules,
@@ -330,7 +483,7 @@ export class AiService implements OnModuleInit {
     let model: string | null = null;
     let executiveSummary = heuristic.executiveSummary;
     let technicalSummary = heuristic.technicalSummary;
-    let recommendations = heuristic.recommendations;
+    let fullRecommendations = heuristic.recommendations;
 
     if (options.forceHeuristic) {
       attempt.status = 'forced_heuristic';
@@ -346,7 +499,7 @@ export class AiService implements OnModuleInit {
         model = ai.model;
         executiveSummary = ai.executiveSummary;
         technicalSummary = ai.technicalSummary;
-        recommendations =
+        fullRecommendations =
           ai.recommendations.length > 0
             ? ai.recommendations
             : heuristic.recommendations;
@@ -359,8 +512,19 @@ export class AiService implements OnModuleInit {
       }
     }
 
-    recommendations = this.limitRecommendations(
-      recommendations,
+    const resolution = this.buildResolution(source, attempt);
+    const artifact: CompareSummaryArtifact = {
+      generatedAt: new Date().toISOString(),
+      source,
+      model,
+      resolution,
+      executiveSummary,
+      technicalSummary,
+      recommendations: fullRecommendations,
+    };
+
+    const recommendations = this.limitRecommendations(
+      artifact.recommendations,
       options.maxRecommendations,
     );
 
@@ -382,6 +546,8 @@ export class AiService implements OnModuleInit {
       responseMeta: {
         openAiAttempt: attempt,
         recommendations: recommendations.length,
+        artifactVersion: 1,
+        artifact,
       },
     });
 
@@ -389,13 +555,14 @@ export class AiService implements OnModuleInit {
 
     return {
       traceId,
-      source,
-      generatedAt: new Date().toISOString(),
-      model,
+      source: artifact.source,
+      generatedAt: artifact.generatedAt,
+      model: artifact.model,
+      resolution,
       audits: compare.audits,
       summary: compare.summary,
-      executiveSummary,
-      technicalSummary,
+      executiveSummary: artifact.executiveSummary,
+      technicalSummary: artifact.technicalSummary,
       recommendations,
     };
   }
@@ -419,7 +586,15 @@ export class AiService implements OnModuleInit {
       throw new NotFoundException(`No existe auditoría con ID ${auditId}`);
     }
 
-    const rule = audit.rules.find((r) => r.ruleId === ruleId) ?? null;
+    const requestedRuleType = this.normalizeRuleType(options.ruleType);
+    const rule =
+      audit.rules.find(
+        (r) =>
+          r.ruleId === ruleId &&
+          this.normalizeRuleType(r.type) === requestedRuleType,
+      ) ??
+      audit.rules.find((r) => r.ruleId === ruleId) ??
+      null;
     if (!rule) {
       throw new NotFoundException(
         `La regla ${ruleId} no existe en la auditoría ${auditId}`,
@@ -435,20 +610,53 @@ export class AiService implements OnModuleInit {
         htmlSnippet: occurrence.htmlSnippet,
       }));
 
-    const fallback = {
-      summary: `La regla ${ruleId} requiere corrección priorizada.`,
-      whyItMatters: `Impacto: ${rule.impact ?? 'n/a'}.`,
-      fixes: [
-        'Corregir componente base.',
-        'Validar con teclado.',
-        'Reauditar.',
-      ],
-      testChecklist: [
-        'Navegación por teclado',
-        'Lector de pantalla',
-        'Reauditoría',
-      ],
-    };
+    const fallback = this.buildRuleExplanationFallback(
+      rule.ruleId,
+      this.normalizeRuleType(rule.type),
+      rule.impact ?? null,
+      matchingOccurrences.length,
+    );
+
+    const cached = await this.findReusableRuleExplainTrace(
+      auditId,
+      rule.ruleId,
+      this.normalizeRuleType(rule.type),
+    );
+    if (cached) {
+      this.logger.log(
+        `AI rule_explain reuse: auditId=${auditId} ruleId=${rule.ruleId} traceId=${cached.traceId}`,
+      );
+      return {
+        traceId: cached.traceId,
+        source: cached.artifact.source,
+        generatedAt: cached.artifact.generatedAt,
+        model: cached.artifact.model,
+        resolution: cached.artifact.resolution,
+        audit: {
+          id: audit.id,
+          url: audit.website.url,
+          timestamp: audit.timestamp.toISOString(),
+          status: (audit as any).status ?? null,
+        },
+        rule: {
+          ruleId: rule.ruleId,
+          type: rule.type,
+          impact: rule.impact ?? null,
+          description: rule.description,
+          help: rule.help,
+          helpUrl: rule.helpUrl,
+          wcag: this.parseJsonArray(rule.wcag),
+          occurrences: matchingOccurrences.length,
+          samples,
+        },
+        explanation: cached.artifact.explanation,
+      };
+    }
+    if (options.reuseOnly) {
+      throw new NotFoundException(
+        `No existe explicación IA persistida para la regla ${rule.ruleId} en la auditoría ${auditId}`,
+      );
+    }
 
     let source: AiSource = 'heuristic';
     let model: string | null = null;
@@ -462,8 +670,12 @@ export class AiService implements OnModuleInit {
         {
           auditId,
           ruleId,
+          ruleType: this.normalizeRuleType(rule.type),
           impact: rule.impact ?? null,
           description: rule.description,
+          help: rule.help,
+          helpUrl: rule.helpUrl,
+          wcag: this.parseJsonArray(rule.wcag),
           occurrences: matchingOccurrences.length,
           samples,
         },
@@ -475,6 +687,15 @@ export class AiService implements OnModuleInit {
         explanation = ai.explanation;
       }
     }
+
+    const resolution = this.buildResolution(source, attempt);
+    const artifact: RuleExplanationArtifact = {
+      generatedAt: new Date().toISOString(),
+      source,
+      model,
+      resolution,
+      explanation,
+    };
 
     const traceId = await this.saveTrace({
       operation: 'rule_explain',
@@ -490,17 +711,19 @@ export class AiService implements OnModuleInit {
       requestMeta: {
         forceHeuristic: options.forceHeuristic ?? false,
         maxOccurrences: options.maxOccurrences ?? null,
+        ruleType: this.normalizeRuleType(rule.type),
       },
-      responseMeta: { openAiAttempt: attempt },
+      responseMeta: { openAiAttempt: attempt, artifactVersion: 1, artifact },
     });
 
     this.logAiResolution('rule_explain', source, attempt, traceId);
 
-    return {
+      return {
       traceId,
-      source,
-      generatedAt: new Date().toISOString(),
-      model,
+      source: artifact.source,
+      generatedAt: artifact.generatedAt,
+      model: artifact.model,
+      resolution,
       audit: {
         id: audit.id,
         url: audit.website.url,
@@ -518,21 +741,29 @@ export class AiService implements OnModuleInit {
         occurrences: matchingOccurrences.length,
         samples,
       },
-      explanation,
+      explanation: artifact.explanation,
     };
   }
 
   private heuristicAudit(
     url: string,
     violations: number,
+    incomplete: number,
     occurrences: number,
     topViolations: TopViolation[],
   ) {
-    const executiveSummary = `En ${url} se detectaron ${violations} violaciones y ${occurrences} ocurrencias.`;
+    const executiveSummary =
+      incomplete > 0
+        ? `En ${url} se detectaron ${violations} reglas en violación, ${incomplete} reglas en revisión manual y ${occurrences} ocurrencias.`
+        : `En ${url} se detectaron ${violations} reglas en violación y ${occurrences} ocurrencias.`;
     const technicalSummary =
       topViolations.length > 0
-        ? `Prioriza: ${topViolations.map((item) => item.ruleId).join(', ')}.`
-        : 'No hay reglas críticas para priorizar.';
+        ? incomplete > 0
+          ? `Prioriza: ${topViolations.map((item) => item.ruleId).join(', ')}. Además, revisa manualmente las reglas incomplete antes de cerrar la auditoría.`
+          : `Prioriza: ${topViolations.map((item) => item.ruleId).join(', ')}.`
+        : incomplete > 0
+          ? 'No hay reglas críticas para priorizar, pero quedan comprobaciones incomplete que requieren revisión manual.'
+          : 'No hay reglas críticas para priorizar.';
     const recommendations: AiRecommendation[] = topViolations.slice(0, 3).map(
       (item) => ({
         title: `Corregir ${item.ruleId}`,
@@ -546,6 +777,19 @@ export class AiService implements OnModuleInit {
         ruleId: item.ruleId,
       }),
     );
+
+    if (incomplete > 0) {
+      recommendations.push({
+        title: 'Revisar resultados incomplete',
+        reason: `La automatización ha dejado ${incomplete} reglas en revisión manual.`,
+        actions: [
+          'Validar manualmente los casos señalados',
+          'Confirmar contraste, foco o nombre accesible según la regla',
+          'Documentar criterio y reauditar',
+        ],
+        priority: violations > 0 ? 'medium' : 'high',
+      });
+    }
 
     return {
       executiveSummary,
@@ -633,19 +877,34 @@ export class AiService implements OnModuleInit {
 
   private async generateOpenAiAuditSummary(input: any, attempt: OpenAiAttempt) {
     const payload = await this.requestOpenAiJson(
-      'Devuelve SOLO JSON con executiveSummary, technicalSummary y recommendations.',
+      "Devuelve SOLO un objeto JSON sin markdown, en espanol de Espana, con estas claves exactas: executiveSummary (string), technicalSummary (string) y recommendations (array de objetos con title, reason, actions, priority y ruleId opcional). Usa terminologia precisa: 'reglas en violacion' para el numero de reglas, 'reglas incomplete' o 'reglas en revision manual' para los hallazgos no concluyentes y 'ocurrencias' para el numero de instancias. No digas que hay N violaciones si N corresponde a ocurrencias. Si hay reglas incomplete, menciónalas explícitamente y recomienda revisión manual; no las presentes como fallo confirmado.",
       input,
       attempt,
     );
     if (!payload) return null;
 
-    const executiveSummary = this.getString(payload, 'executiveSummary');
-    const technicalSummary = this.getString(payload, 'technicalSummary');
-    const recommendations = this.getRecommendations(payload);
+    const executiveSummary = this.getStringByAliases(payload, [
+      'executiveSummary',
+      'executive_summary',
+      'executive',
+      'summary',
+      'resumenEjecutivo',
+    ]);
+    const technicalSummary = this.getStringByAliases(payload, [
+      'technicalSummary',
+      'technical_summary',
+      'technical',
+      'details',
+      'analysis',
+      'resumenTecnico',
+    ]);
+    const recommendations = this.getRecommendationsByAliases(payload);
 
     if (!executiveSummary || !technicalSummary) {
+      attempt.status = 'invalid_payload';
+      attempt.errorMessage = `Missing fields: executiveSummary=${!!executiveSummary} technicalSummary=${!!technicalSummary}`;
       this.logger.warn(
-        `OpenAI audit_summary incompleto: executive=${!!executiveSummary} technical=${!!technicalSummary}`,
+        `OpenAI audit_summary invalid_payload: executive=${!!executiveSummary} technical=${!!technicalSummary} keys=${Object.keys(payload).join(',').slice(0, 160)}`,
       );
       return null;
     }
@@ -663,19 +922,34 @@ export class AiService implements OnModuleInit {
     attempt: OpenAiAttempt,
   ) {
     const payload = await this.requestOpenAiJson(
-      'Devuelve SOLO JSON con executiveSummary, technicalSummary y recommendations.',
+      "Devuelve SOLO un objeto JSON sin markdown, en espanol de Espana, con estas claves exactas: executiveSummary (string), technicalSummary (string) y recommendations (array de objetos con title, reason, actions, priority y ruleId opcional). Distingue con precision entre nuevas, resueltas y persistentes.",
       input,
       attempt,
     );
     if (!payload) return null;
 
-    const executiveSummary = this.getString(payload, 'executiveSummary');
-    const technicalSummary = this.getString(payload, 'technicalSummary');
-    const recommendations = this.getRecommendations(payload);
+    const executiveSummary = this.getStringByAliases(payload, [
+      'executiveSummary',
+      'executive_summary',
+      'executive',
+      'summary',
+      'resumenEjecutivo',
+    ]);
+    const technicalSummary = this.getStringByAliases(payload, [
+      'technicalSummary',
+      'technical_summary',
+      'technical',
+      'details',
+      'analysis',
+      'resumenTecnico',
+    ]);
+    const recommendations = this.getRecommendationsByAliases(payload);
 
     if (!executiveSummary || !technicalSummary) {
+      attempt.status = 'invalid_payload';
+      attempt.errorMessage = `Missing fields: executiveSummary=${!!executiveSummary} technicalSummary=${!!technicalSummary}`;
       this.logger.warn(
-        `OpenAI compare_summary incompleto: executive=${!!executiveSummary} technical=${!!technicalSummary}`,
+        `OpenAI compare_summary invalid_payload: executive=${!!executiveSummary} technical=${!!technicalSummary} keys=${Object.keys(payload).join(',').slice(0, 160)}`,
       );
       return null;
     }
@@ -693,20 +967,42 @@ export class AiService implements OnModuleInit {
     attempt: OpenAiAttempt,
   ) {
     const payload = await this.requestOpenAiJson(
-      'Devuelve SOLO JSON con summary, whyItMatters, fixes y testChecklist.',
+      this.getRuleExplanationPrompt(
+        this.normalizeRuleType(this.getString(input, 'ruleType') ?? 'violations'),
+      ),
       input,
       attempt,
     );
     if (!payload) return null;
 
-    const summary = this.getString(payload, 'summary');
-    const whyItMatters = this.getString(payload, 'whyItMatters');
-    const fixes = this.getStringArray(payload, 'fixes');
-    const testChecklist = this.getStringArray(payload, 'testChecklist');
+    const summary = this.getStringByAliases(payload, [
+      'summary',
+      'executiveSummary',
+      'executive_summary',
+    ]);
+    const whyItMatters = this.getStringByAliases(payload, [
+      'whyItMatters',
+      'why_it_matters',
+      'rationale',
+      'impactSummary',
+    ]);
+    const fixes = this.getStringArrayByAliases(payload, [
+      'fixes',
+      'actions',
+      'recommendations',
+    ]);
+    const testChecklist = this.getStringArrayByAliases(payload, [
+      'testChecklist',
+      'test_checklist',
+      'checks',
+      'validationSteps',
+    ]);
 
     if (!summary || !whyItMatters) {
+      attempt.status = 'invalid_payload';
+      attempt.errorMessage = `Missing fields: summary=${!!summary} whyItMatters=${!!whyItMatters}`;
       this.logger.warn(
-        `OpenAI rule_explain incompleto: summary=${!!summary} whyItMatters=${!!whyItMatters}`,
+        `OpenAI rule_explain invalid_payload: summary=${!!summary} whyItMatters=${!!whyItMatters} keys=${Object.keys(payload).join(',').slice(0, 160)}`,
       );
       return null;
     }
@@ -716,24 +1012,87 @@ export class AiService implements OnModuleInit {
       explanation: {
         summary,
         whyItMatters,
-        fixes:
-          fixes.length > 0
-            ? fixes
-            : [
-                'Corregir en componente base.',
-                'Validar navegación por teclado.',
-                'Reauditar.',
-              ],
+        fixes: fixes.length > 0 ? fixes : ['Revisar patrón base.', 'Validar cambio.', 'Reauditar.'],
         testChecklist:
           testChecklist.length > 0
             ? testChecklist
-            : [
-                'Navegación por teclado',
-                'Lector de pantalla',
-                'Reauditoría',
-              ],
+            : ['Navegación por teclado', 'Lector de pantalla', 'Reauditoría'],
       },
     };
+  }
+
+  private getRuleExplanationPrompt(ruleType: AiRuleType): string {
+    if (ruleType === 'passes') {
+      return 'Devuelve SOLO un objeto JSON sin markdown, en espanol de Espana, con estas claves exactas: summary (string), whyItMatters (string), fixes (array de strings) y testChecklist (array de strings). La regla ya ha PASADO; explica por que el resultado es correcto, que patron accesible valida y como mantenerlo sin regresiones. No redactes como si hubiera un fallo.';
+    }
+    if (ruleType === 'incomplete') {
+      return 'Devuelve SOLO un objeto JSON sin markdown, en espanol de Espana, con estas claves exactas: summary (string), whyItMatters (string), fixes (array de strings) y testChecklist (array de strings). La regla esta en estado INCOMPLETE; explica que la automatizacion no puede concluir el resultado, que debe revisarse manualmente y como validar el caso. No afirmes ni fallo ni cumplimiento. Prioriza acciones de validacion manual; no presentes cambios de diseño o eliminación de fondos como solución obligatoria salvo que el input lo justifique claramente.';
+    }
+    return 'Devuelve SOLO un objeto JSON sin markdown, en espanol de Espana, con estas claves exactas: summary (string), whyItMatters (string), fixes (array de strings) y testChecklist (array de strings). La regla esta en violacion; explica el problema, su impacto y pasos concretos de correccion.';
+  }
+
+  private buildRuleExplanationFallback(
+    ruleId: string,
+    ruleType: AiRuleType,
+    impact: string | null,
+    occurrences: number,
+  ) {
+    if (ruleType === 'passes') {
+      return {
+        summary: `La regla ${ruleId} se ha validado correctamente en ${occurrences} ocurrencias revisadas.`,
+        whyItMatters:
+          'Confirma que este patrón ya cumple la comprobación automática y conviene preservarlo para evitar regresiones.',
+        fixes: [
+          'Mantener este patrón en componentes similares.',
+          'Revisar cambios visuales o semánticos relacionados.',
+          'Reauditar tras modificaciones relevantes.',
+        ],
+        testChecklist: [
+          'Revisar que el patrón siga presente',
+          'Validar con teclado o lector de pantalla si aplica',
+          'Reauditoría',
+        ],
+      };
+    }
+
+    if (ruleType === 'incomplete') {
+      return {
+        summary: `La regla ${ruleId} requiere revisión manual; la automatización no puede concluir el resultado en ${occurrences} casos.`,
+        whyItMatters:
+          'Un resultado incomplete no implica ni fallo ni cumplimiento, pero sí una zona de riesgo que debe validarse manualmente.',
+        fixes: [
+          'Revisar manualmente los casos señalados.',
+          'Validar con tecnologías asistivas o teclado.',
+          'Documentar criterio y reauditar.',
+        ],
+        testChecklist: [
+          'Inspección manual del caso',
+          'Prueba con lector de pantalla o teclado',
+          'Reauditoría',
+        ],
+      };
+    }
+
+    return {
+      summary: `La regla ${ruleId} requiere corrección priorizada en ${occurrences} ocurrencias.`,
+      whyItMatters: `Impacto estimado: ${impact ?? 'n/a'}.`,
+      fixes: [
+        'Corregir componente base.',
+        'Validar navegación por teclado.',
+        'Reauditar.',
+      ],
+      testChecklist: [
+        'Navegación por teclado',
+        'Lector de pantalla',
+        'Reauditoría',
+      ],
+    };
+  }
+
+  private normalizeRuleType(value: string | null | undefined): AiRuleType {
+    if (value === 'passes') return 'passes';
+    if (value === 'incomplete') return 'incomplete';
+    return 'violations';
   }
 
   private async requestOpenAiJson(
@@ -836,8 +1195,23 @@ export class AiService implements OnModuleInit {
     }
   }
 
+  private getRecommendationsByAliases(
+    payload: Record<string, unknown>,
+  ): AiRecommendation[] {
+    for (const candidate of this.getPayloadCandidates(payload)) {
+      const recommendations = this.getRecommendations(candidate);
+      if (recommendations.length > 0) {
+        return recommendations;
+      }
+    }
+    return [];
+  }
+
   private getRecommendations(payload: Record<string, unknown>): AiRecommendation[] {
-    const raw = payload.recommendations;
+    const raw =
+      payload.recommendations ??
+      payload.recommendationList ??
+      payload.items;
     if (!Array.isArray(raw)) return [];
 
     return raw
@@ -849,9 +1223,7 @@ export class AiService implements OnModuleInit {
         title: this.getString(entry, 'title') ?? '',
         reason: this.getString(entry, 'reason') ?? '',
         actions: this.getStringArray(entry, 'actions'),
-        priority:
-          (this.getString(entry, 'priority') as 'high' | 'medium' | 'low') ??
-          'medium',
+        priority: this.normalizePriority(this.getString(entry, 'priority')),
         ruleId: this.getString(entry, 'ruleId') ?? undefined,
       }))
       .filter(
@@ -860,6 +1232,81 @@ export class AiService implements OnModuleInit {
           entry.reason.length > 0 &&
           entry.actions.length > 0,
       );
+  }
+
+  private normalizePriority(
+    value: string | null | undefined,
+  ): 'high' | 'medium' | 'low' {
+    const normalized = value?.trim().toLowerCase();
+    if (!normalized) return 'medium';
+    if (['high', 'alta', 'alto', 'critical', 'critica', 'crítica'].includes(normalized)) {
+      return 'high';
+    }
+    if (['medium', 'media', 'medio', 'moderate', 'moderada'].includes(normalized)) {
+      return 'medium';
+    }
+    if (['low', 'baja', 'bajo', 'minor'].includes(normalized)) {
+      return 'low';
+    }
+    return 'medium';
+  }
+
+  private getStringByAliases(
+    payload: Record<string, unknown>,
+    aliases: string[],
+  ): string | null {
+    for (const candidate of this.getPayloadCandidates(payload)) {
+      for (const alias of aliases) {
+        const value = this.getString(candidate, alias);
+        if (value) return value;
+      }
+    }
+    return null;
+  }
+
+  private getStringArrayByAliases(
+    payload: Record<string, unknown>,
+    aliases: string[],
+  ): string[] {
+    for (const candidate of this.getPayloadCandidates(payload)) {
+      for (const alias of aliases) {
+        const value = this.getStringArray(candidate, alias);
+        if (value.length > 0) return value;
+      }
+    }
+    return [];
+  }
+
+  private getPayloadCandidates(
+    payload: Record<string, unknown>,
+  ): Record<string, unknown>[] {
+    const candidates: Record<string, unknown>[] = [];
+    const seen = new Set<Record<string, unknown>>();
+
+    const pushCandidate = (value: unknown) => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+      const objectValue = value as Record<string, unknown>;
+      if (seen.has(objectValue)) return;
+      seen.add(objectValue);
+      candidates.push(objectValue);
+    };
+
+    pushCandidate(payload);
+
+    for (const candidate of [...candidates]) {
+      for (const key of [
+        'data',
+        'result',
+        'output',
+        'summary',
+        'response',
+        'payload',
+      ]) {
+        pushCandidate(candidate[key]);
+      }
+    }
+
+    return candidates;
   }
 
   private getString(
@@ -905,6 +1352,210 @@ export class AiService implements OnModuleInit {
       : 'unknown';
   }
 
+  private async findReusableAuditSummaryTrace(
+    auditId: number,
+    forceHeuristic: boolean,
+  ): Promise<{ traceId: number; artifact: AuditSummaryArtifact } | null> {
+    const items = await this.prisma.aiTrace.findMany({
+      where: { operation: 'audit_summary', auditId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    for (const item of items) {
+      const requestMeta = this.asRecord(item.requestMeta);
+      if (!requestMeta) continue;
+      if (this.asBoolean(requestMeta.forceHeuristic) !== forceHeuristic) continue;
+      const artifact = this.parseAuditSummaryArtifact(item.responseMeta);
+      if (!artifact) continue;
+      return { traceId: item.id, artifact };
+    }
+
+    return null;
+  }
+
+  private async findReusableCompareSummaryTrace(
+    oldId: number,
+    newId: number,
+    forceHeuristic: boolean,
+  ): Promise<{ traceId: number; artifact: CompareSummaryArtifact } | null> {
+    const items = await this.prisma.aiTrace.findMany({
+      where: {
+        operation: 'compare_summary',
+        compareOldAudit: oldId,
+        compareNewAudit: newId,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    for (const item of items) {
+      const requestMeta = this.asRecord(item.requestMeta);
+      if (!requestMeta) continue;
+      if (this.asBoolean(requestMeta.forceHeuristic) !== forceHeuristic) continue;
+      const artifact = this.parseCompareSummaryArtifact(item.responseMeta);
+      if (!artifact) continue;
+      return { traceId: item.id, artifact };
+    }
+
+    return null;
+  }
+
+  private parseAuditSummaryArtifact(meta: unknown): AuditSummaryArtifact | null {
+    const responseMeta = this.asRecord(meta);
+    if (!responseMeta || responseMeta.artifactVersion !== 1) return null;
+    const artifact = this.asRecord(responseMeta.artifact);
+    if (!artifact) return null;
+
+    const executiveSummary = this.getString(artifact, 'executiveSummary');
+    const technicalSummary = this.getString(artifact, 'technicalSummary');
+    const generatedAt = this.getString(artifact, 'generatedAt');
+    if (!executiveSummary || !technicalSummary || !generatedAt) return null;
+
+    const topViolations = this.parseTopViolations(artifact.topViolations);
+    return {
+      generatedAt,
+      source: this.parseAiSource(artifact.source),
+      model: this.getString(artifact, 'model'),
+      resolution: this.parseResolution(artifact.resolution),
+      executiveSummary,
+      technicalSummary,
+      recommendations: this.getRecommendations(artifact),
+      topViolations,
+    };
+  }
+
+  private parseCompareSummaryArtifact(meta: unknown): CompareSummaryArtifact | null {
+    const responseMeta = this.asRecord(meta);
+    if (!responseMeta || responseMeta.artifactVersion !== 1) return null;
+    const artifact = this.asRecord(responseMeta.artifact);
+    if (!artifact) return null;
+
+    const executiveSummary = this.getString(artifact, 'executiveSummary');
+    const technicalSummary = this.getString(artifact, 'technicalSummary');
+    const generatedAt = this.getString(artifact, 'generatedAt');
+    if (!executiveSummary || !technicalSummary || !generatedAt) return null;
+
+    return {
+      generatedAt,
+      source: this.parseAiSource(artifact.source),
+      model: this.getString(artifact, 'model'),
+      resolution: this.parseResolution(artifact.resolution),
+      executiveSummary,
+      technicalSummary,
+      recommendations: this.getRecommendations(artifact),
+    };
+  }
+
+  private async findReusableRuleExplainTrace(
+    auditId: number,
+    ruleId: string,
+    ruleType: AiRuleType,
+  ): Promise<{ traceId: number; artifact: RuleExplanationArtifact } | null> {
+    const items = await this.prisma.aiTrace.findMany({
+      where: { operation: 'rule_explain', auditId, ruleId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    for (const item of items) {
+      const requestMeta = this.asRecord(item.requestMeta);
+      if (!requestMeta) continue;
+      if ((this.getString(requestMeta, 'ruleType') ?? 'violations') !== ruleType) continue;
+      const artifact = this.parseRuleExplanationArtifact(item.responseMeta);
+      if (!artifact) continue;
+      return { traceId: item.id, artifact };
+    }
+
+    return null;
+  }
+
+  private parseRuleExplanationArtifact(meta: unknown): RuleExplanationArtifact | null {
+    const responseMeta = this.asRecord(meta);
+    if (!responseMeta || responseMeta.artifactVersion !== 1) return null;
+    const artifact = this.asRecord(responseMeta.artifact);
+    if (!artifact) return null;
+
+    const generatedAt = this.getString(artifact, 'generatedAt');
+    const explanation = this.asRecord(artifact.explanation);
+    if (!generatedAt || !explanation) return null;
+
+    const summary = this.getString(explanation, 'summary');
+    const whyItMatters = this.getString(explanation, 'whyItMatters');
+    if (!summary || !whyItMatters) return null;
+
+    return {
+      generatedAt,
+      source: this.parseAiSource(artifact.source),
+      model: this.getString(artifact, 'model'),
+      resolution: this.parseResolution(artifact.resolution),
+      explanation: {
+        summary,
+        whyItMatters,
+        fixes: this.getStringArray(explanation, 'fixes'),
+        testChecklist: this.getStringArray(explanation, 'testChecklist'),
+      },
+    };
+  }
+
+  private parseTopViolations(value: unknown): TopViolation[] {
+    if (!Array.isArray(value)) return [];
+    return value
+      .filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === 'object')
+      .map((entry) => {
+        const ruleId = this.getString(entry, 'ruleId');
+        const occurrences = this.asNumber(entry.occurrences);
+        const score = this.asNumber(entry.score);
+        if (!ruleId || occurrences === null || score === null) return null;
+        return {
+          ruleId,
+          impact: this.getString(entry, 'impact'),
+          occurrences,
+          score,
+        };
+      })
+      .filter((entry): entry is TopViolation => entry !== null);
+  }
+
+  private parseResolution(value: unknown): AiResolution {
+    const record = this.asRecord(value);
+    if (!record) {
+      return {
+        attempted: false,
+        status: null,
+        usedFallback: false,
+        reason: null,
+        latencyMs: null,
+      };
+    }
+
+    return {
+      attempted: this.asBoolean(record.attempted),
+      status: this.getString(record, 'status'),
+      usedFallback: this.asBoolean(record.usedFallback),
+      reason: this.getString(record, 'reason'),
+      latencyMs: this.asNumber(record.latencyMs),
+    };
+  }
+
+  private parseAiSource(value: unknown): AiSource {
+    return value === 'openai' ? 'openai' : 'heuristic';
+  }
+
+  private asRecord(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null;
+  }
+
+  private asBoolean(value: unknown): boolean {
+    return value === true;
+  }
+
+  private asNumber(value: unknown): number | null {
+    return typeof value === 'number' && Number.isFinite(value) ? value : null;
+  }
+
   private newAttempt(): OpenAiAttempt {
     return {
       attempted: false,
@@ -914,6 +1565,19 @@ export class AiService implements OnModuleInit {
       status: null,
       httpStatus: null,
       errorMessage: null,
+    };
+  }
+
+  private buildResolution(
+    source: AiSource,
+    attempt: OpenAiAttempt,
+  ): AiResolution {
+    return {
+      attempted: attempt.attempted,
+      status: attempt.status,
+      usedFallback: attempt.attempted && source !== 'openai',
+      reason: attempt.errorMessage,
+      latencyMs: attempt.latencyMs,
     };
   }
 

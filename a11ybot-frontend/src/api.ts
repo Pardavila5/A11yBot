@@ -1,6 +1,8 @@
 import {
   AiAuditSummary,
+  AiAuditSummaryAB,
   AiCompareSummary,
+  AiCompareSummaryAB,
   AiRuleExplanation,
   AiTraceItem,
   AiTraceStats,
@@ -66,12 +68,16 @@ export async function deleteAudits(): Promise<void> {
 export async function getAiAuditSummary(
   auditId: number,
   params?: {
+    reuseOnly?: boolean;
     forceHeuristic?: boolean;
     maxRecommendations?: number;
     maxRules?: number;
   },
 ): Promise<AiAuditSummary> {
   const query = new URLSearchParams();
+  if (params?.reuseOnly !== undefined) {
+    query.set('reuseOnly', String(params.reuseOnly));
+  }
   if (params?.forceHeuristic !== undefined) {
     query.set('forceHeuristic', String(params.forceHeuristic));
   }
@@ -91,15 +97,35 @@ export async function getAiAuditSummary(
   return res.json();
 }
 
+export async function getAiAuditSummaryAB(
+  auditId: number,
+): Promise<AiAuditSummaryAB> {
+  const res = await fetch(`${API_BASE}/ai/audits/${auditId}/summary/ab`);
+  if (!res.ok) {
+    throw new Error(
+      `No se pudo generar la comparativa A/B de la auditoria ${auditId}`,
+    );
+  }
+  return res.json();
+}
+
 export async function explainAiRule(
   auditId: number,
   ruleId: string,
   params?: {
+    ruleType?: 'violations' | 'passes' | 'incomplete';
+    reuseOnly?: boolean;
     forceHeuristic?: boolean;
     maxOccurrences?: number;
   },
 ): Promise<AiRuleExplanation> {
   const query = new URLSearchParams();
+  if (params?.ruleType) {
+    query.set('ruleType', params.ruleType);
+  }
+  if (params?.reuseOnly !== undefined) {
+    query.set('reuseOnly', String(params.reuseOnly));
+  }
   if (params?.forceHeuristic !== undefined) {
     query.set('forceHeuristic', String(params.forceHeuristic));
   }
@@ -137,6 +163,21 @@ export async function getAiCompareSummary(
   }
   const res = await fetch(`${API_BASE}/ai/compare?${query.toString()}`);
   if (!res.ok) throw new Error('No se pudo generar el resumen IA de comparacion');
+  return res.json();
+}
+
+export async function getAiCompareSummaryAB(
+  oldId: number,
+  newId: number,
+): Promise<AiCompareSummaryAB> {
+  const query = new URLSearchParams({
+    old: String(oldId),
+    new: String(newId),
+  });
+  const res = await fetch(`${API_BASE}/ai/compare/ab?${query.toString()}`);
+  if (!res.ok) {
+    throw new Error('No se pudo generar la comparativa A/B de comparacion');
+  }
   return res.json();
 }
 

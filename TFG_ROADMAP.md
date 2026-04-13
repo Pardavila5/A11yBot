@@ -23,7 +23,7 @@ Fecha de actualizacion: 2026-03-24
 
 ### En consolidacion
 1. Coherencia contractual frontend/backend y documentacion.
-2. Visualizacion mas completa del aporte IA en frontend.
+2. Explotacion y validacion de la visualizacion A/B del aporte IA en frontend.
 3. Trazabilidad y material de apoyo para memoria y defensa.
 
 ## 4) Backlog priorizado
@@ -53,6 +53,7 @@ Fecha de actualizacion: 2026-03-24
    - porcentaje de sugerencias IA aceptadas,
    - percepcion de utilidad.
 3. Panel o evidencias exportables para defensa.
+4. Capturas y resultados comparables usando la UI A/B ya integrada en frontend.
 
 ## 5) Propuesta de cierre incremental
 - Fase 1: cerrar coherencia, trazabilidad y calidad minima defendible.
@@ -67,5 +68,5 @@ Fecha de actualizacion: 2026-03-24
 
 ## 7) Siguiente fase recomendada
 - Metricas persistentes por fase.
-- Visualizacion A/B mas clara en frontend.
+- Consolidar resultados A/B y documentarlos en memoria/defensa.
 - Exportes de reportes o artefactos de apoyo para la defensa.

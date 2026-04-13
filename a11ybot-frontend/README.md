@@ -35,6 +35,7 @@ Por defecto sirve la app en `http://localhost:5173` y llama al backend en `http:
 - Consultar historico paginado.
 - Ver detalle completo de una auditoria.
 - Solicitar resumen IA y explicaciones IA por regla.
+- Comparar heuristico vs asistido mediante endpoints A/B en auditoria y comparacion.
 - Comparar dos auditorias y pedir resumen IA de comparacion.
 - Consultar pantalla de operaciones con runtime de auditorias y metricas IA.
 

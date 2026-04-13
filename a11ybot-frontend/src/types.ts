@@ -88,11 +88,26 @@ export type AiRecommendation = {
   ruleId?: string;
 };
 
-export type AiAuditSummary = {
+export type AiResolution = {
+  attempted: boolean;
+  status: string | null;
+  usedFallback: boolean;
+  reason: string | null;
+  latencyMs: number | null;
+};
+
+export type AiSummaryBase = {
   traceId?: number | null;
   source: 'heuristic' | 'openai';
   generatedAt: string;
   model: string | null;
+  resolution: AiResolution;
+  executiveSummary: string;
+  technicalSummary: string;
+  recommendations: AiRecommendation[];
+};
+
+export type AiAuditSummary = AiSummaryBase & {
   audit: {
     id: number;
     url: string;
@@ -114,9 +129,6 @@ export type AiAuditSummary = {
       score: number;
     }[];
   };
-  executiveSummary: string;
-  technicalSummary: string;
-  recommendations: AiRecommendation[];
 };
 
 export type AiRuleExplanation = {
@@ -124,6 +136,7 @@ export type AiRuleExplanation = {
   source: 'heuristic' | 'openai';
   generatedAt: string;
   model: string | null;
+  resolution?: AiResolution;
   audit: {
     id: number;
     url: string;
@@ -153,16 +166,38 @@ export type AiRuleExplanation = {
   };
 };
 
-export type AiCompareSummary = {
-  traceId?: number | null;
-  source: 'heuristic' | 'openai';
-  generatedAt: string;
-  model: string | null;
+export type AiCompareSummary = AiSummaryBase & {
   audits: CompareResult['audits'];
   summary: CompareResult['summary'];
-  executiveSummary: string;
-  technicalSummary: string;
-  recommendations: AiRecommendation[];
+};
+
+export type AiAuditSummaryAB = {
+  generatedAt: string;
+  operation: 'audit_summary';
+  auditId: number;
+  heuristic: AiAuditSummary;
+  assisted: AiAuditSummary;
+  diff: {
+    sourceChanged: boolean;
+    recommendationDelta: number;
+    fallbackTriggered: boolean;
+    assistedStatus: string | null;
+  };
+};
+
+export type AiCompareSummaryAB = {
+  generatedAt: string;
+  operation: 'compare_summary';
+  oldId: number;
+  newId: number;
+  heuristic: AiCompareSummary;
+  assisted: AiCompareSummary;
+  diff: {
+    sourceChanged: boolean;
+    recommendationDelta: number;
+    fallbackTriggered: boolean;
+    assistedStatus: string | null;
+  };
 };
 
 export type AuditRuntimeStats = {

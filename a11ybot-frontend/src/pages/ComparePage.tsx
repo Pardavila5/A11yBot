@@ -1,13 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { compareAudits, getAiCompareSummary, listAudits } from '../api';
+import {
+  compareAudits,
+  getAiCompareSummary,
+  getAiCompareSummaryAB,
+  listAudits,
+} from '../api';
 import {
   AiCompareSummary,
+  AiCompareSummaryAB,
   AuditListResponse,
   AuditSummary,
   CompareResult,
 } from '../types';
 import { formatDate, formatErrorMessage } from '../lib/format';
+import AiAbComparisonCard from '../ui/AiAbComparisonCard';
+import {
+  aiResolutionStatusLabel,
+  aiSourceLabel,
+  impactChipColor,
+  impactLabel,
+  priorityChipColor,
+  priorityLabel,
+} from '../ui/aiSummaryPresentation';
 import { useToast } from '../ui/ToastProvider';
 import {
   Box,
@@ -44,8 +59,8 @@ function CompareList({ title, items }: { title: string; items: CompareResult['ne
                 <Typography sx={{ fontWeight: 800 }}>{v.ruleId}</Typography>
                 <Chip
                   size="small"
-                  label={v.impact ?? 'n/a'}
-                  color={v.impact ? 'error' : 'default'}
+                  label={impactLabel(v.impact)}
+                  color={impactChipColor(v.impact)}
                   variant={v.impact ? 'filled' : 'outlined'}
                 />
               </Stack>
@@ -68,12 +83,35 @@ function CompareList({ title, items }: { title: string; items: CompareResult['ne
   );
 }
 
-function priorityChipColor(
-  priority: 'high' | 'medium' | 'low',
-): 'error' | 'warning' | 'default' {
-  if (priority === 'high') return 'error';
-  if (priority === 'medium') return 'warning';
-  return 'default';
+function renderCompareSummaryDetails(summary: AiCompareSummary) {
+  return (
+    <Stack spacing={1}>
+      <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
+        <Chip
+          size="small"
+          label={`Delta reglas: ${summary.summary.deltaViolationRules}`}
+          variant="outlined"
+        />
+        <Chip
+          size="small"
+          label={`Nuevas: ${summary.summary.newViolationRules}`}
+          color="error"
+          variant="outlined"
+        />
+        <Chip
+          size="small"
+          label={`Resueltas: ${summary.summary.resolvedViolationRules}`}
+          color="success"
+          variant="outlined"
+        />
+        <Chip
+          size="small"
+          label={`Persistentes: ${summary.summary.persistentViolationRules}`}
+          variant="outlined"
+        />
+      </Stack>
+    </Stack>
+  );
 }
 
 export default function ComparePage() {
@@ -88,6 +126,8 @@ export default function ComparePage() {
   const [compareOptions, setCompareOptions] = useState<AuditSummary[]>([]);
   const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<AiCompareSummary | null>(null);
+  const [aiSummaryAbLoading, setAiSummaryAbLoading] = useState(false);
+  const [aiSummaryAb, setAiSummaryAb] = useState<AiCompareSummaryAB | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [optionsLoading, setOptionsLoading] = useState(false);
@@ -140,6 +180,7 @@ export default function ComparePage() {
     try {
       setLoading(true);
       setAiSummary(null);
+      setAiSummaryAb(null);
       const data = await compareAudits(oldId, newId);
       if (requestId !== compareRequestIdRef.current) return;
       setCompareResult(data);
@@ -147,6 +188,7 @@ export default function ComparePage() {
       if (requestId !== compareRequestIdRef.current) return;
       setCompareResult(null);
       setAiSummary(null);
+      setAiSummaryAb(null);
       showToast({ message: formatErrorMessage(err), severity: 'error' });
     } finally {
       if (requestId !== compareRequestIdRef.current) return;
@@ -174,13 +216,33 @@ export default function ComparePage() {
       const data = await getAiCompareSummary(compareIds.old, compareIds.new);
       setAiSummary(data);
       showToast({
-        message: `Resumen IA de comparación generado (${data.source})`,
+        message: `Resumen IA de comparación generado (${aiSourceLabel(data.source)})`,
         severity: 'success',
       });
     } catch (err: any) {
       showToast({ message: formatErrorMessage(err), severity: 'error' });
     } finally {
       setAiSummaryLoading(false);
+    }
+  }
+
+  async function handleGenerateAiCompareSummaryAB() {
+    if (!compareIds.old || !compareIds.new) {
+      showToast({ message: 'Ejecuta primero una comparacion valida', severity: 'warning' });
+      return;
+    }
+    try {
+      setAiSummaryAbLoading(true);
+      const data = await getAiCompareSummaryAB(compareIds.old, compareIds.new);
+      setAiSummaryAb(data);
+      showToast({
+        message: 'Comparativa A/B de comparacion generada',
+        severity: 'success',
+      });
+    } catch (err: unknown) {
+      showToast({ message: formatErrorMessage(err), severity: 'error' });
+    } finally {
+      setAiSummaryAbLoading(false);
     }
   }
 
@@ -350,9 +412,34 @@ export default function ComparePage() {
                     </Button>
                   </span>
                 </Tooltip>
+                <Tooltip title="Comparar salida heuristica y salida asistida">
+                  <span>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => void handleGenerateAiCompareSummaryAB()}
+                      disabled={aiSummaryAbLoading}
+                    >
+                      {aiSummaryAbLoading ? 'Generando A/B...' : 'Comparativa A/B'}
+                    </Button>
+                  </span>
+                </Tooltip>
                 {aiSummary && (
                   <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
-                    <Chip size="small" label={`Fuente: ${aiSummary.source}`} variant="outlined" />
+                    <Chip size="small" label={`Fuente: ${aiSourceLabel(aiSummary.source)}`} variant="outlined" />
+                    {aiSummary.resolution.status && (
+                      <Chip
+                        size="small"
+                        label={`Estado: ${aiResolutionStatusLabel(aiSummary.resolution.status)}`}
+                        variant="outlined"
+                      />
+                    )}
+                    {aiSummary.resolution.usedFallback && (
+                      <Chip size="small" label="Fallback aplicado" color="warning" variant="outlined" />
+                    )}
+                    {aiSummary.resolution.latencyMs !== null && (
+                      <Chip size="small" label={`${aiSummary.resolution.latencyMs}ms`} variant="outlined" />
+                    )}
                     {aiSummary.model && (
                       <Chip size="small" label={aiSummary.model} variant="outlined" />
                     )}
@@ -374,13 +461,18 @@ export default function ComparePage() {
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
                       {aiSummary.technicalSummary}
                     </Typography>
+                    {aiSummary.resolution.reason && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
+                        Motivo de resolucion: {aiSummary.resolution.reason}
+                      </Typography>
+                    )}
                     <Stack spacing={0.75} sx={{ mt: 1 }}>
                       {aiSummary.recommendations.map((item, index) => (
                         <Stack key={`${item.title}-${index}`} direction="row" spacing={0.75} alignItems="flex-start">
                           <Chip
                             size="small"
                             color={priorityChipColor(item.priority)}
-                            label={item.priority}
+                            label={priorityLabel(item.priority)}
                             variant="outlined"
                           />
                           <Box sx={{ minWidth: 0 }}>
@@ -396,6 +488,20 @@ export default function ComparePage() {
                     </Stack>
                   </CardContent>
                 </Card>
+              )}
+              {aiSummaryAb && (
+                <AiAbComparisonCard
+                  title="Comparativa A/B de comparacion"
+                  heuristic={aiSummaryAb.heuristic}
+                  assisted={aiSummaryAb.assisted}
+                  diff={aiSummaryAb.diff}
+                  renderHeuristicDetails={(item) =>
+                    renderCompareSummaryDetails(item as AiCompareSummary)
+                  }
+                  renderAssistedDetails={(item) =>
+                    renderCompareSummaryDetails(item as AiCompareSummary)
+                  }
+                />
               )}
             </CardContent>
           </Card>

@@ -77,13 +77,14 @@ export class AuditController {
   @Delete()
   async deleteAll() {
     await this.prisma.$transaction(async (tx) => {
+      await tx.aiTrace.deleteMany();
       await tx.occurrence.deleteMany();
       await tx.rule.deleteMany();
       await tx.audit.deleteMany();
       await tx.website.deleteMany();
       // Reset autoincrement counters en SQLite
       await tx.$executeRawUnsafe(
-        `DELETE FROM sqlite_sequence WHERE name IN ('Audit','Website','Rule','Occurrence')`,
+        `DELETE FROM sqlite_sequence WHERE name IN ('AiTrace','Audit','Website','Rule','Occurrence')`,
       );
     });
     return { message: 'Histórico borrado' };

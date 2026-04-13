@@ -5,17 +5,30 @@ import {
   deleteAudits,
   explainAiRule,
   getAiAuditSummary,
+  getAiAuditSummaryAB,
   getAudit,
   listAudits,
 } from '../api';
 import {
   AiAuditSummary,
+  AiAuditSummaryAB,
   AiRuleExplanation,
   AuditDetail,
   AuditListItem,
   AuditListResponse,
 } from '../types';
 import { formatDate, formatErrorMessage } from '../lib/format';
+import AiAbComparisonCard from '../ui/AiAbComparisonCard';
+import {
+  aiResolutionStatusLabel,
+  aiSourceLabel,
+  auditStatusLabel,
+  impactChipColor,
+  impactLabel,
+  metricLabels,
+  priorityChipColor,
+  priorityLabel,
+} from '../ui/aiSummaryPresentation';
 import { useToast } from '../ui/ToastProvider';
 import {
   Accordion,
@@ -42,6 +55,7 @@ import {
   Tooltip,
   Typography,
   Select,
+  type ChipProps,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
@@ -50,25 +64,170 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 
 const DEFAULT_PAGE_SIZE = 5;
 
-function statusChipProps(status: string | null | undefined): { label: string; color?: any; variant?: any } | null {
+type AuditStatusFilter =
+  | 'all'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'pending';
+
+type StatusChipConfig = {
+  label: string;
+  color?: ChipProps['color'];
+  variant?: ChipProps['variant'];
+};
+
+function statusChipProps(status: string | null | undefined): StatusChipConfig | null {
   if (!status) return null;
-  if (status === 'running') return { label: 'running', color: 'warning', variant: 'filled' };
-  if (status === 'failed') return { label: 'failed', color: 'error', variant: 'filled' };
-  if (status === 'completed') return { label: 'completed', color: 'success', variant: 'outlined' };
-  if (status === 'pending') return { label: 'pending', color: 'info', variant: 'outlined' };
-  return { label: status, variant: 'outlined' };
+  if (status === 'running') return { label: auditStatusLabel(status), color: 'warning', variant: 'filled' };
+  if (status === 'failed') return { label: auditStatusLabel(status), color: 'error', variant: 'filled' };
+  if (status === 'completed') return { label: auditStatusLabel(status), color: 'success', variant: 'outlined' };
+  if (status === 'pending') return { label: auditStatusLabel(status), color: 'info', variant: 'outlined' };
+  return { label: auditStatusLabel(status), variant: 'outlined' };
 }
 
-function priorityChipColor(priority: 'high' | 'medium' | 'low'): 'error' | 'warning' | 'default' {
-  if (priority === 'high') return 'error';
-  if (priority === 'medium') return 'warning';
-  return 'default';
+function renderAuditSummaryDetails(summary: AiAuditSummary) {
+  const labels = metricLabels({
+    totalRules: summary.metrics.rules.total,
+    violationRules: summary.metrics.rules.violations,
+    occurrences: summary.metrics.occurrences,
+  });
+  return (
+    <Stack spacing={1}>
+      <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
+        <Chip size="small" label={labels[0]} variant="outlined" />
+        <Chip
+          size="small"
+          label={labels[1]}
+          color="error"
+          variant="outlined"
+        />
+        {summary.metrics.rules.incomplete > 0 && (
+          <Chip
+            size="small"
+            label={`Revisión manual: ${summary.metrics.rules.incomplete}`}
+            color="warning"
+            variant="outlined"
+          />
+        )}
+        <Chip size="small" label={labels[2]} variant="outlined" />
+      </Stack>
+      {summary.metrics.topViolations.length > 0 && (
+        <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
+          {summary.metrics.topViolations.map((item) => (
+            <Chip
+              key={item.ruleId}
+              size="small"
+              label={`${item.ruleId} (${item.occurrences})`}
+              variant="outlined"
+            />
+          ))}
+        </Stack>
+      )}
+    </Stack>
+  );
+}
+
+const CHIP_PILL_SX = {
+  borderRadius: 999,
+};
+
+const SEVERITY_CHIP_SX = {
+  borderRadius: 999,
+  minWidth: 84,
+  justifyContent: 'center',
+};
+
+function ruleExplainTooltip(ruleType: string): string {
+  if (ruleType === 'passes') return 'Interpretar por qué esta comprobación ha pasado correctamente';
+  if (ruleType === 'incomplete') return 'Analizar qué debe revisarse manualmente en esta comprobación';
+  return 'Generar explicación práctica de esta regla';
+}
+
+function ruleExplainButtonLabel(
+  ruleType: string,
+  loading: boolean,
+  hasExplanation: boolean,
+): string {
+  if (loading) return 'Generando IA...';
+  if (ruleType === 'passes') return hasExplanation ? 'Actualizar análisis' : 'Analizar pass';
+  if (ruleType === 'incomplete') return hasExplanation ? 'Actualizar revisión' : 'Revisar IA';
+  return hasExplanation ? 'Actualizar IA' : 'Explicar IA';
+}
+
+function ruleAiCardTitle(ruleType: string): string {
+  if (ruleType === 'passes') return 'Análisis IA del pass';
+  if (ruleType === 'incomplete') return 'Análisis IA de revisión manual';
+  return 'Explicación IA';
+}
+
+function getRecommendationBadge(
+  recommendation: AiAuditSummary['recommendations'][number],
+  rules: AuditDetail['rules'],
+): { label: string; color: 'error' | 'warning' | 'default' } {
+  if (recommendation.ruleId) {
+    const matchingRule = rules.find((rule) => rule.ruleId === recommendation.ruleId);
+    if (matchingRule?.impact) {
+      return {
+        label: impactLabel(matchingRule.impact),
+        color: impactChipColor(matchingRule.impact),
+      };
+    }
+  }
+
+  return {
+    label: priorityLabel(recommendation.priority),
+    color: priorityChipColor(recommendation.priority),
+  };
+}
+
+function parseFailureSummary(summary: string | null | undefined): {
+  heading: string | null;
+  items: string[];
+} {
+  const normalized = (summary ?? '').replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return { heading: null, items: [] };
+  }
+
+  const headingMatch = normalized.match(/^(Fix any of the following|Fix all of the following):\s*/i);
+  const heading = headingMatch ? headingMatch[1] : null;
+  let body = headingMatch ? normalized.slice(headingMatch[0].length) : normalized;
+
+  const splitPatterns = [
+    / (?=aria-label attribute)/g,
+    / (?=aria-labelledby attribute)/g,
+    / (?=Element does not have )/g,
+    / (?=Element is in tab order)/g,
+    / (?=Element does not have text that is visible to screen readers)/g,
+    / (?=Element has no title attribute)/g,
+    / (?=Element's default semantics were not overridden)/g,
+    / (?=Document does not have )/g,
+    / (?=Some page content is not contained by landmarks)/g,
+    / (?=Element's background color could not be determined)/g,
+  ];
+
+  for (const pattern of splitPatterns) {
+    body = body.replace(pattern, '\n');
+  }
+
+  const items = body
+    .split('\n')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+
+  return {
+    heading,
+    items: items.length > 0 ? items : [normalized],
+  };
 }
 
 function Occurrences({
   items,
+  ruleType,
 }: {
   items: { id: number; htmlSnippet: string; target: string[]; failureSummary: string | null }[];
+  ruleType: 'violations' | 'passes' | 'incomplete';
 }) {
   const STEP = 20;
   const [visibleCount, setVisibleCount] = useState(STEP);
@@ -87,40 +246,136 @@ function Occurrences({
 
   const visibleItems = items.slice(0, visibleCount);
   const remaining = items.length - visibleItems.length;
+  const nonEmptySummaries = items
+    .map((item) => item.failureSummary?.trim() ?? '')
+    .filter((item) => item.length > 0);
+  const uniqueSummaries = Array.from(new Set(nonEmptySummaries));
+  const sharedSummary =
+    uniqueSummaries.length === 1 && items.length > 1 ? uniqueSummaries[0] : null;
+  const sharedSummaryParsed = parseFailureSummary(sharedSummary);
 
   return (
     <Stack spacing={1} sx={{ mt: 1 }}>
-      {visibleItems.map((o) => (
-        <Card key={o.id} variant="outlined">
-          <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+      {ruleType === 'incomplete' && (
+        <Chip
+          size="small"
+          color="warning"
+          variant="outlined"
+          label="Evidencia automática de revisión manual"
+          sx={{ alignSelf: 'flex-start' }}
+        />
+      )}
+      {sharedSummary && (
+        <Card variant="outlined" sx={{ borderStyle: 'dashed' }}>
+          <CardContent sx={{ py: 1.25, '&:last-child': { pb: 1.25 } }}>
             <Typography variant="caption" color="text.secondary">
-              target: {o.target.join(', ')}
+              Motivo automático común detectado en múltiples ocurrencias
             </Typography>
-            {o.failureSummary && (
-              <Typography variant="body2" sx={{ mt: 0.5 }}>
-                {o.failureSummary}
+            {sharedSummaryParsed.heading && (
+              <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 700 }}>
+                {sharedSummaryParsed.heading}
               </Typography>
             )}
-            <Box
-              component="pre"
-              sx={(t) => ({
-                mt: 1,
-                mb: 0,
-                p: 1.25,
-                borderRadius: 2,
-                overflowX: 'auto',
-                fontSize: 13,
-                backgroundColor: t.palette.mode === 'dark' ? '#020617' : '#0b0b12',
-                color: '#f8fafc',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-              })}
-            >
-              {o.htmlSnippet}
-            </Box>
+            <Stack spacing={0.4} sx={{ mt: 0.75 }}>
+              {sharedSummaryParsed.items.map((item, index) => (
+                <Typography key={`shared-summary-${index}`} variant="body2">
+                  - {item}
+                </Typography>
+              ))}
+            </Stack>
           </CardContent>
         </Card>
-      ))}
+      )}
+      {visibleItems.map((o, index) => {
+        const parsedFailureSummary = parseFailureSummary(o.failureSummary);
+        return (
+        <Card key={o.id} variant="outlined">
+          <CardContent sx={{ py: 1.25, '&:last-child': { pb: 1.25 } }}>
+            <Stack spacing={1}>
+              <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                <Typography variant="caption" color="text.secondary">
+                  Ocurrencia {index + 1}
+                </Typography>
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  label={o.target.join(', ')}
+                  sx={{
+                    maxWidth: '100%',
+                    height: 'auto',
+                    alignSelf: 'flex-start',
+                    '& .MuiChip-label': {
+                      display: 'block',
+                      whiteSpace: 'normal',
+                      overflowWrap: 'anywhere',
+                      wordBreak: 'break-word',
+                      lineHeight: 1.35,
+                      paddingTop: '8px',
+                      paddingBottom: '8px',
+                    },
+                  }}
+                />
+              </Stack>
+              {o.failureSummary && !sharedSummary && (
+                <Box
+                  sx={(theme) => ({
+                    px: 1.25,
+                    py: 1,
+                    borderRadius: 2,
+                    border: `1px solid ${theme.palette.divider}`,
+                    backgroundColor:
+                      theme.palette.mode === 'dark'
+                        ? 'rgba(148, 163, 184, 0.06)'
+                        : 'rgba(15, 23, 42, 0.03)',
+                  })}
+                >
+                  {parsedFailureSummary.heading && (
+                    <Typography variant="caption" color="text.secondary">
+                      {parsedFailureSummary.heading}
+                    </Typography>
+                  )}
+                  <Stack spacing={0.4} sx={{ mt: parsedFailureSummary.heading ? 0.5 : 0 }}>
+                    {parsedFailureSummary.items.map((item, failureIndex) => (
+                      <Typography key={`${o.id}-failure-${failureIndex}`} variant="body2">
+                        - {item}
+                      </Typography>
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+              <Box
+                sx={(theme) => ({
+                  p: 1.25,
+                  borderRadius: 2,
+                  border: `1px solid ${theme.palette.divider}`,
+                  backgroundColor:
+                    theme.palette.mode === 'dark'
+                      ? 'rgba(2, 6, 23, 0.92)'
+                      : 'rgba(15, 23, 42, 0.04)',
+                })}
+              >
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+                  HTML detectado
+                </Typography>
+                <Box
+                  component="pre"
+                  sx={{
+                    m: 0,
+                    overflowX: 'auto',
+                    fontSize: 13,
+                    color: '#f8fafc',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {o.htmlSnippet}
+                </Box>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+        );
+      })}
       {remaining > 0 && (
         <Button variant="text" onClick={() => setVisibleCount((c) => Math.min(items.length, c + STEP))}>
           Mostrar {Math.min(STEP, remaining)} más
@@ -160,11 +415,14 @@ export default function AuditsPage() {
   const [detailTab, setDetailTab] = useState<'violations' | 'passes' | 'incomplete'>('violations');
   const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<AiAuditSummary | null>(null);
+  const [aiSummaryAbLoading, setAiSummaryAbLoading] = useState(false);
+  const [aiSummaryAb, setAiSummaryAb] = useState<AiAuditSummaryAB | null>(null);
   const [aiRuleLoading, setAiRuleLoading] = useState<Record<string, boolean>>({});
   const [aiRuleExplanations, setAiRuleExplanations] = useState<Record<string, AiRuleExplanation>>({});
+  const [expandedRuleKey, setExpandedRuleKey] = useState<string | false>(false);
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'completed' | 'failed' | 'pending'>('all');
+  const [statusFilter, setStatusFilter] = useState<AuditStatusFilter>('all');
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize]);
 
@@ -196,8 +454,10 @@ export default function AuditsPage() {
 
   useEffect(() => {
     setAiSummary(null);
+    setAiSummaryAb(null);
     setAiRuleLoading({});
     setAiRuleExplanations({});
+    setExpandedRuleKey(false);
     if (!selectedId || Number.isNaN(selectedId)) {
       setDetail(null);
       return;
@@ -205,6 +465,29 @@ export default function AuditsPage() {
     void loadDetail(selectedId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
+
+  useEffect(() => {
+    if (!detail) return;
+    const auditId = detail.id;
+    let cancelled = false;
+
+    async function hydratePersistedAiSummary() {
+      try {
+        setAiSummaryLoading(true);
+        const data = await getAiAuditSummary(auditId, { reuseOnly: true });
+        if (!cancelled) setAiSummary(data);
+      } catch {
+        if (!cancelled) setAiSummary(null);
+      } finally {
+        if (!cancelled) setAiSummaryLoading(false);
+      }
+    }
+
+    void hydratePersistedAiSummary();
+    return () => {
+      cancelled = true;
+    };
+  }, [detail]);
 
   async function refreshAudits(nextPage = 1) {
     const requestId = ++listRequestIdRef.current;
@@ -300,7 +583,7 @@ export default function AuditsPage() {
       const data = await getAiAuditSummary(detail.id);
       setAiSummary(data);
       showToast({
-        message: `Resumen IA generado (${data.source})`,
+        message: `Resumen IA generado (${aiSourceLabel(data.source)})`,
         severity: 'success',
       });
     } catch (err: any) {
@@ -310,8 +593,45 @@ export default function AuditsPage() {
     }
   }
 
+  async function handleGenerateAiSummaryAB() {
+    if (!detail) return;
+    try {
+      setAiSummaryAbLoading(true);
+      const data = await getAiAuditSummaryAB(detail.id);
+      setAiSummaryAb(data);
+      showToast({
+        message: 'Comparativa A/B generada correctamente',
+        severity: 'success',
+      });
+    } catch (err: unknown) {
+      showToast({ message: formatErrorMessage(err), severity: 'error' });
+    } finally {
+      setAiSummaryAbLoading(false);
+    }
+  }
+
   function getRuleKey(ruleType: string, ruleId: string) {
     return `${ruleType}::${ruleId}`;
+  }
+
+  async function hydratePersistedRuleExplanation(ruleType: string, ruleId: string) {
+    if (!detail) return;
+    const key = getRuleKey(ruleType, ruleId);
+    if (aiRuleExplanations[key] || aiRuleLoading[key]) return;
+
+    try {
+      setAiRuleLoading((prev) => ({ ...prev, [key]: true }));
+      const data = await explainAiRule(detail.id, ruleId, {
+        ruleType: ruleType as 'violations' | 'passes' | 'incomplete',
+        reuseOnly: true,
+        maxOccurrences: 3,
+      });
+      setAiRuleExplanations((prev) => ({ ...prev, [key]: data }));
+    } catch {
+      // Si no existe explicación persistida todavía, no mostramos error.
+    } finally {
+      setAiRuleLoading((prev) => ({ ...prev, [key]: false }));
+    }
   }
 
   async function handleExplainRule(ruleType: string, ruleId: string) {
@@ -319,10 +639,13 @@ export default function AuditsPage() {
     const key = getRuleKey(ruleType, ruleId);
     try {
       setAiRuleLoading((prev) => ({ ...prev, [key]: true }));
-      const data = await explainAiRule(detail.id, ruleId, { maxOccurrences: 3 });
+      const data = await explainAiRule(detail.id, ruleId, {
+        ruleType: ruleType as 'violations' | 'passes' | 'incomplete',
+        maxOccurrences: 3,
+      });
       setAiRuleExplanations((prev) => ({ ...prev, [key]: data }));
       showToast({
-        message: `Explicación IA generada para ${ruleId} (${data.source})`,
+        message: `Explicación IA generada para ${ruleId} (${aiSourceLabel(data.source)})`,
         severity: 'success',
       });
     } catch (err: any) {
@@ -425,7 +748,7 @@ export default function AuditsPage() {
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', lg: '1.1fr 0.9fr' },
+          gridTemplateColumns: { xs: '1fr', xl: '0.92fr 1.08fr' },
           gap: 2,
           alignItems: 'start',
         }}
@@ -455,13 +778,13 @@ export default function AuditsPage() {
                   labelId="status-filter-label"
                   label="Estado"
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  onChange={(e) => setStatusFilter(e.target.value as AuditStatusFilter)}
                 >
                   <MenuItem value="all">Todos</MenuItem>
-                  <MenuItem value="running">Running</MenuItem>
-                  <MenuItem value="completed">Completed</MenuItem>
-                  <MenuItem value="failed">Failed</MenuItem>
-                  <MenuItem value="pending">Pending</MenuItem>
+                  <MenuItem value="running">En ejecución</MenuItem>
+                  <MenuItem value="completed">Completadas</MenuItem>
+                  <MenuItem value="failed">Fallidas</MenuItem>
+                  <MenuItem value="pending">Pendientes</MenuItem>
                 </Select>
               </FormControl>
               {(searchTerm.length > 0 || statusFilter !== 'all') && (
@@ -588,9 +911,16 @@ export default function AuditsPage() {
                   {detail.url}
                 </Typography>
                 <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
-                  <Chip size="small" label={`Reglas: ${detail.rules.length}`} />
-                  <Chip size="small" label={`Ocurr.: ${detail.occurrences.length}`} />
-                  {detail.status && <Chip size="small" label={`Status: ${detail.status}`} variant="outlined" />}
+                  <Chip size="small" label={`Reglas: ${detail.rules.length}`} sx={CHIP_PILL_SX} />
+                  <Chip size="small" label={`Ocurr.: ${detail.occurrences.length}`} sx={CHIP_PILL_SX} />
+                  {detail.status && (
+                    <Chip
+                      size="small"
+                      label={`Estado: ${auditStatusLabel(detail.status)}`}
+                      variant="outlined"
+                      sx={CHIP_PILL_SX}
+                    />
+                  )}
                 </Stack>
                 {detail.notes && (
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
@@ -598,31 +928,106 @@ export default function AuditsPage() {
                   </Typography>
                 )}
 
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }} sx={{ mt: 1.5 }}>
-                  <Tooltip title="Generar resumen inteligente de esta auditoría">
-                    <span>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => void handleGenerateAiSummary()}
-                        disabled={aiSummaryLoading}
+                <Box
+                  sx={{
+                    mt: 1.5,
+                    p: 1.25,
+                    border: (theme) => `1px solid ${theme.palette.divider}`,
+                    borderRadius: 3,
+                    bgcolor: 'background.default',
+                  }}
+                >
+                  <Stack
+                    direction={{ xs: 'column', md: 'row' }}
+                    spacing={1}
+                    alignItems={{ md: 'flex-start' }}
+                    justifyContent="space-between"
+                  >
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      <Tooltip title="Generar resumen inteligente de esta auditoría">
+                        <span>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => void handleGenerateAiSummary()}
+                            disabled={aiSummaryLoading}
+                          >
+                            {aiSummaryLoading ? 'Generando IA...' : 'Resumen IA'}
+                          </Button>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title="Comparar salida heurística y salida asistida">
+                        <span>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => void handleGenerateAiSummaryAB()}
+                            disabled={aiSummaryAbLoading}
+                          >
+                            {aiSummaryAbLoading ? 'Generando A/B...' : 'Comparativa A/B'}
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    </Stack>
+                    {aiSummary && (
+                      <Stack
+                        direction="row"
+                        spacing={0.75}
+                        useFlexGap
+                        flexWrap="wrap"
+                        sx={{ justifyContent: { md: 'flex-end' } }}
                       >
-                        {aiSummaryLoading ? 'Generando IA...' : 'Resumen IA'}
-                      </Button>
-                    </span>
-                  </Tooltip>
-                  {aiSummary && (
-                  <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
-                    <Chip size="small" label={`Fuente: ${aiSummary.source}`} variant="outlined" />
-                    {aiSummary.model && (
-                      <Chip size="small" label={aiSummary.model} variant="outlined" />
-                    )}
-                    {aiSummary.traceId !== undefined && (
-                      <Chip size="small" label={`traceId: ${aiSummary.traceId ?? 'n/a'}`} variant="outlined" />
+                        <Chip
+                          size="small"
+                          label={`Fuente: ${aiSourceLabel(aiSummary.source)}`}
+                          variant="outlined"
+                          sx={CHIP_PILL_SX}
+                        />
+                        {aiSummary.resolution.status && (
+                          <Chip
+                            size="small"
+                            label={`Estado: ${aiResolutionStatusLabel(aiSummary.resolution.status)}`}
+                            variant="outlined"
+                            sx={CHIP_PILL_SX}
+                          />
+                        )}
+                        {aiSummary.resolution.usedFallback && (
+                          <Chip
+                            size="small"
+                            label="Fallback aplicado"
+                            color="warning"
+                            variant="outlined"
+                            sx={CHIP_PILL_SX}
+                          />
+                        )}
+                        {aiSummary.resolution.latencyMs !== null && (
+                          <Chip
+                            size="small"
+                            label={`${aiSummary.resolution.latencyMs}ms`}
+                            variant="outlined"
+                            sx={CHIP_PILL_SX}
+                          />
+                        )}
+                        {aiSummary.model && (
+                          <Chip
+                            size="small"
+                            label={aiSummary.model}
+                            variant="outlined"
+                            sx={CHIP_PILL_SX}
+                          />
+                        )}
+                        {aiSummary.traceId !== undefined && (
+                          <Chip
+                            size="small"
+                            label={`traceId: ${aiSummary.traceId ?? 'n/a'}`}
+                            variant="outlined"
+                            sx={CHIP_PILL_SX}
+                          />
+                        )}
+                      </Stack>
                     )}
                   </Stack>
-                )}
-                </Stack>
+                </Box>
 
                 {aiSummary && (
                     <Card variant="outlined" sx={{ mt: 1.25 }}>
@@ -633,13 +1038,19 @@ export default function AuditsPage() {
                       <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                         {aiSummary.executiveSummary}
                       </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
                           {aiSummary.technicalSummary}
                         </Typography>
+                        {aiSummary.resolution.reason && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
+                            Motivo de resolucion: {aiSummary.resolution.reason}
+                          </Typography>
+                        )}
                         {aiSummary.metrics.topViolations.length > 0 && (
                           <Box sx={{ mt: 1 }}>
                             <Typography variant="caption" color="text.secondary">
-                              Top violaciones detectadas
+                              Reglas en violación priorizadas ({aiSummary.metrics.topViolations.length}/
+                              {aiSummary.metrics.rules.violations})
                             </Typography>
                             <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 0.75 }}>
                               {aiSummary.metrics.topViolations.map((item) => (
@@ -654,53 +1065,93 @@ export default function AuditsPage() {
                           </Box>
                         )}
                         <Stack spacing={0.75} sx={{ mt: 1 }}>
-                          {aiSummary.recommendations.map((item, index) => (
-                            <Stack key={`${item.title}-${index}`} direction="row" spacing={0.75} alignItems="flex-start">
-                            <Chip
-                              size="small"
-                              color={priorityChipColor(item.priority)}
-                              label={item.priority}
-                              variant="outlined"
-                            />
-                            <Box sx={{ minWidth: 0 }}>
-                              <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                                {item.title}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {item.reason}
-                              </Typography>
-                            </Box>
-                          </Stack>
-                        ))}
-                      </Stack>
-                    </CardContent>
-                  </Card>
+                          {aiSummary.recommendations.map((item, index) => {
+                            const badge = getRecommendationBadge(item, detail.rules);
+                            return (
+                              <Stack
+                                key={`${item.title}-${index}`}
+                                direction="row"
+                                spacing={0.75}
+                                alignItems="flex-start"
+                              >
+                                <Chip
+                                  size="small"
+                                  color={badge.color}
+                                  label={badge.label}
+                                  variant="outlined"
+                                  sx={SEVERITY_CHIP_SX}
+                                />
+                                <Box sx={{ minWidth: 0 }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                                    {item.title}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {item.reason}
+                                  </Typography>
+                                </Box>
+                              </Stack>
+                            );
+                          })}
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                )}
+
+                {aiSummaryAb && (
+                  <AiAbComparisonCard
+                    title="Comparativa A/B del resumen"
+                    heuristic={aiSummaryAb.heuristic}
+                    assisted={aiSummaryAb.assisted}
+                    diff={aiSummaryAb.diff}
+                    renderHeuristicDetails={(item) =>
+                      renderAuditSummaryDetails(item as AiAuditSummary)
+                    }
+                    renderAssistedDetails={(item) =>
+                      renderAuditSummaryDetails(item as AiAuditSummary)
+                    }
+                  />
                 )}
 
                 <Tabs
                   value={detailTab}
                   onChange={(_, value) => setDetailTab(value)}
-                  sx={{ mt: 2 }}
-                  variant="scrollable"
-                  allowScrollButtonsMobile
+                  sx={{
+                    mt: 2,
+                    '& .MuiTab-root': {
+                      minHeight: 56,
+                      textTransform: 'none',
+                      fontWeight: 800,
+                      fontSize: { xs: '0.96rem', md: '1rem' },
+                      px: 1.5,
+                      color: 'text.secondary',
+                    },
+                    '& .Mui-selected': {
+                      color: 'text.primary',
+                    },
+                    '& .MuiTabs-indicator': {
+                      height: 3,
+                      borderRadius: 999,
+                    },
+                  }}
+                  variant="fullWidth"
                 >
                   <Tab
                     icon={<ErrorOutlineIcon fontSize="small" />}
                     iconPosition="start"
-                    label={`Violations (${detailCounts.violations})`}
+                    label={`Violaciones (${detailCounts.violations})`}
                     value="violations"
-                  />
-                  <Tab
-                    icon={<CheckCircleOutlineIcon fontSize="small" />}
-                    iconPosition="start"
-                    label={`Passes (${detailCounts.passes})`}
-                    value="passes"
                   />
                   <Tab
                     icon={<HelpOutlineIcon fontSize="small" />}
                     iconPosition="start"
-                    label={`Incomplete (${detailCounts.incomplete})`}
+                    label={`Revisión manual (${detailCounts.incomplete})`}
                     value="incomplete"
+                  />
+                  <Tab
+                    icon={<CheckCircleOutlineIcon fontSize="small" />}
+                    iconPosition="start"
+                    label={`Correctas (${detailCounts.passes})`}
+                    value="passes"
                   />
                 </Tabs>
 
@@ -716,18 +1167,32 @@ export default function AuditsPage() {
                       const aiRuleKey = getRuleKey(r.type, r.ruleId);
                       const aiRuleItem = aiRuleExplanations[aiRuleKey];
                       const aiRuleBusy = aiRuleLoading[aiRuleKey] === true;
-                      const impactChipColor =
-                        detailTab === 'violations'
-                          ? 'error'
-                          : detailTab === 'passes'
-                            ? 'success'
-                            : 'warning';
                       return (
-                        <Accordion key={r.id} variant="outlined" disableGutters TransitionProps={{ unmountOnExit: true }}>
+                        <Accordion
+                          key={r.id}
+                          variant="outlined"
+                          disableGutters
+                          expanded={expandedRuleKey === aiRuleKey}
+                          onChange={(_, isExpanded) => {
+                            setExpandedRuleKey(isExpanded ? aiRuleKey : false);
+                            if (isExpanded) {
+                              void hydratePersistedRuleExplanation(r.type, r.ruleId);
+                            }
+                          }}
+                          TransitionProps={{ unmountOnExit: true }}
+                        >
                           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                             <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
-                              <Typography sx={{ fontWeight: 900, flex: 1 }}>{r.ruleId}</Typography>
-                              <Chip size="small" label={r.impact ?? 'n/a'} color={impactChipColor as any} variant="outlined" />
+                              <Typography variant="subtitle1" sx={{ fontWeight: 800, flex: 1 }}>
+                                {r.ruleId}
+                              </Typography>
+                              <Chip
+                                size="small"
+                                label={impactLabel(r.impact)}
+                                color={impactChipColor(r.impact)}
+                                variant="outlined"
+                                sx={SEVERITY_CHIP_SX}
+                              />
                             </Stack>
                           </AccordionSummary>
                           <AccordionDetails>
@@ -745,7 +1210,7 @@ export default function AuditsPage() {
                                   Ver ayuda
                                 </Button>
                               </Tooltip>
-                              <Tooltip title="Generar explicacion practica de esta regla">
+                              <Tooltip title={ruleExplainTooltip(r.type)}>
                                 <span>
                                   <Button
                                     variant="outlined"
@@ -753,7 +1218,7 @@ export default function AuditsPage() {
                                     onClick={() => void handleExplainRule(r.type, r.ruleId)}
                                     disabled={aiRuleBusy}
                                   >
-                                    {aiRuleBusy ? 'Generando IA...' : aiRuleItem ? 'Actualizar IA' : 'Explicar IA'}
+                                    {ruleExplainButtonLabel(r.type, aiRuleBusy, !!aiRuleItem)}
                                   </Button>
                                 </span>
                               </Tooltip>
@@ -766,14 +1231,29 @@ export default function AuditsPage() {
                                 <CardContent sx={{ py: 1.25, '&:last-child': { pb: 1.25 } }}>
                                   <Stack direction="row" spacing={0.75} alignItems="center" useFlexGap flexWrap="wrap">
                                     <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
-                                      Explicacion IA
+                                      {ruleAiCardTitle(r.type)}
                                     </Typography>
-                                    <Chip size="small" variant="outlined" label={aiRuleItem.source} />
+                                      <Chip
+                                        size="small"
+                                        variant="outlined"
+                                        label={aiSourceLabel(aiRuleItem.source)}
+                                        sx={CHIP_PILL_SX}
+                                      />
                                     {aiRuleItem.model && (
-                                      <Chip size="small" variant="outlined" label={aiRuleItem.model} />
+                                      <Chip
+                                        size="small"
+                                        variant="outlined"
+                                        label={aiRuleItem.model}
+                                        sx={CHIP_PILL_SX}
+                                      />
                                     )}
                                     {aiRuleItem.traceId !== undefined && (
-                                      <Chip size="small" variant="outlined" label={`traceId: ${aiRuleItem.traceId ?? 'n/a'}`} />
+                                      <Chip
+                                        size="small"
+                                        variant="outlined"
+                                        label={`traceId: ${aiRuleItem.traceId ?? 'n/a'}`}
+                                        sx={CHIP_PILL_SX}
+                                      />
                                     )}
                                   </Stack>
                                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
@@ -782,6 +1262,15 @@ export default function AuditsPage() {
                                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                                     {aiRuleItem.explanation.whyItMatters}
                                   </Typography>
+                                  {r.type === 'incomplete' && (
+                                    <Chip
+                                      size="small"
+                                      color="warning"
+                                      variant="outlined"
+                                      label="Resultado incomplete: requiere revisión manual"
+                                      sx={{ mt: 0.75 }}
+                                    />
+                                  )}
                                   <Stack spacing={0.5} sx={{ mt: 0.75 }}>
                                     {aiRuleItem.explanation.fixes.slice(0, 3).map((fix, index) => (
                                       <Typography key={`${r.ruleId}-fix-${index}`} variant="caption" color="text.secondary">
@@ -792,7 +1281,10 @@ export default function AuditsPage() {
                                 </CardContent>
                               </Card>
                             )}
-                            <Occurrences items={occ} />
+                            <Occurrences
+                              items={occ}
+                              ruleType={r.type as 'violations' | 'passes' | 'incomplete'}
+                            />
                           </AccordionDetails>
                         </Accordion>
                       );
