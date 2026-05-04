@@ -16,6 +16,7 @@ import {
   AuditDetail,
   AuditListItem,
   AuditListResponse,
+  AuditStatusFilter,
 } from '../types';
 import { formatDate, formatErrorMessage } from '../lib/format';
 import AiAbComparisonCard from '../ui/AiAbComparisonCard';
@@ -64,13 +65,6 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 
 const DEFAULT_PAGE_SIZE = 5;
 
-type AuditStatusFilter =
-  | 'all'
-  | 'running'
-  | 'completed'
-  | 'failed'
-  | 'pending';
-
 type StatusChipConfig = {
   label: string;
   color?: ChipProps['color'];
@@ -82,7 +76,6 @@ function statusChipProps(status: string | null | undefined): StatusChipConfig | 
   if (status === 'running') return { label: auditStatusLabel(status), color: 'warning', variant: 'filled' };
   if (status === 'failed') return { label: auditStatusLabel(status), color: 'error', variant: 'filled' };
   if (status === 'completed') return { label: auditStatusLabel(status), color: 'success', variant: 'outlined' };
-  if (status === 'pending') return { label: auditStatusLabel(status), color: 'info', variant: 'outlined' };
   return { label: auditStatusLabel(status), variant: 'outlined' };
 }
 
@@ -222,7 +215,7 @@ function parseFailureSummary(summary: string | null | undefined): {
   };
 }
 
-function Occurrences({
+function OccurrenceGroups({
   items,
   ruleType,
 }: {
@@ -246,13 +239,138 @@ function Occurrences({
 
   const visibleItems = items.slice(0, visibleCount);
   const remaining = items.length - visibleItems.length;
-  const nonEmptySummaries = items
-    .map((item) => item.failureSummary?.trim() ?? '')
-    .filter((item) => item.length > 0);
-  const uniqueSummaries = Array.from(new Set(nonEmptySummaries));
-  const sharedSummary =
-    uniqueSummaries.length === 1 && items.length > 1 ? uniqueSummaries[0] : null;
-  const sharedSummaryParsed = parseFailureSummary(sharedSummary);
+  const allSummaryGroups = new Map<string, typeof items>();
+
+  for (const item of items) {
+    const summary = item.failureSummary?.trim() ?? '';
+    if (!summary) continue;
+    const group = allSummaryGroups.get(summary) ?? [];
+    group.push(item);
+    allSummaryGroups.set(summary, group);
+  }
+
+  const visibleSummaryGroups = new Map<string, typeof items>();
+  for (const item of visibleItems) {
+    const summary = item.failureSummary?.trim() ?? '';
+    if (!summary) continue;
+    const group = visibleSummaryGroups.get(summary) ?? [];
+    group.push(item);
+    visibleSummaryGroups.set(summary, group);
+  }
+
+  const renderedSummaryGroups = new Set<string>();
+
+  function renderOccurrenceCard(
+    occurrence: (typeof items)[number],
+    index: number,
+    hideFailureSummary: boolean,
+  ) {
+    const parsedFailureSummary = parseFailureSummary(occurrence.failureSummary);
+
+    return (
+      <Card key={occurrence.id} variant="outlined">
+        <CardContent sx={{ py: 1.25, '&:last-child': { pb: 1.25 } }}>
+          <Stack spacing={1}>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              useFlexGap
+              flexWrap="wrap"
+            >
+              <Typography variant="caption" color="text.secondary">
+                Ocurrencia {index + 1}
+              </Typography>
+              <Chip
+                size="small"
+                variant="outlined"
+                label={occurrence.target.join(', ')}
+                sx={{
+                  maxWidth: '100%',
+                  height: 'auto',
+                  alignSelf: 'flex-start',
+                  '& .MuiChip-label': {
+                    display: 'block',
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere',
+                    wordBreak: 'break-word',
+                    lineHeight: 1.35,
+                    paddingTop: '8px',
+                    paddingBottom: '8px',
+                  },
+                }}
+              />
+            </Stack>
+            {occurrence.failureSummary && !hideFailureSummary && (
+              <Box
+                sx={(theme) => ({
+                  px: 1.25,
+                  py: 1,
+                  borderRadius: 2,
+                  border: `1px solid ${theme.palette.divider}`,
+                  backgroundColor:
+                    theme.palette.mode === 'dark'
+                      ? 'rgba(148, 163, 184, 0.06)'
+                      : 'rgba(15, 23, 42, 0.03)',
+                })}
+              >
+                {parsedFailureSummary.heading && (
+                  <Typography variant="caption" color="text.secondary">
+                    {parsedFailureSummary.heading}
+                  </Typography>
+                )}
+                <Stack
+                  spacing={0.4}
+                  sx={{ mt: parsedFailureSummary.heading ? 0.5 : 0 }}
+                >
+                  {parsedFailureSummary.items.map((item, failureIndex) => (
+                    <Typography
+                      key={`${occurrence.id}-failure-${failureIndex}`}
+                      variant="body2"
+                    >
+                      - {item}
+                    </Typography>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+            <Box
+              sx={(theme) => ({
+                p: 1.25,
+                borderRadius: 2,
+                border: `1px solid ${theme.palette.divider}`,
+                backgroundColor:
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(2, 6, 23, 0.92)'
+                    : 'rgba(15, 23, 42, 0.04)',
+              })}
+            >
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: 'block', mb: 0.75 }}
+              >
+                HTML detectado
+              </Typography>
+              <Box
+                component="pre"
+                sx={{
+                  m: 0,
+                  overflowX: 'auto',
+                  fontSize: 13,
+                  color: '#f8fafc',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {occurrence.htmlSnippet}
+              </Box>
+            </Box>
+          </Stack>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Stack spacing={1} sx={{ mt: 1 }}>
@@ -265,119 +383,70 @@ function Occurrences({
           sx={{ alignSelf: 'flex-start' }}
         />
       )}
-      {sharedSummary && (
-        <Card variant="outlined" sx={{ borderStyle: 'dashed' }}>
-          <CardContent sx={{ py: 1.25, '&:last-child': { pb: 1.25 } }}>
-            <Typography variant="caption" color="text.secondary">
-              Motivo automático común detectado en múltiples ocurrencias
-            </Typography>
-            {sharedSummaryParsed.heading && (
-              <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 700 }}>
-                {sharedSummaryParsed.heading}
-              </Typography>
-            )}
-            <Stack spacing={0.4} sx={{ mt: 0.75 }}>
-              {sharedSummaryParsed.items.map((item, index) => (
-                <Typography key={`shared-summary-${index}`} variant="body2">
-                  - {item}
-                </Typography>
-              ))}
-            </Stack>
-          </CardContent>
-        </Card>
-      )}
-      {visibleItems.map((o, index) => {
-        const parsedFailureSummary = parseFailureSummary(o.failureSummary);
+      {visibleItems.map((item, index) => {
+        const normalizedSummary = item.failureSummary?.trim() ?? '';
+        const visibleGroup = normalizedSummary
+          ? visibleSummaryGroups.get(normalizedSummary) ?? []
+          : [];
+        const allGroup = normalizedSummary
+          ? allSummaryGroups.get(normalizedSummary) ?? []
+          : [];
+        const hasGroupedSummary = normalizedSummary.length > 0;
+
+        if (!hasGroupedSummary) {
+          return renderOccurrenceCard(item, index, false);
+        }
+
+        if (renderedSummaryGroups.has(normalizedSummary)) {
+          return null;
+        }
+
+        renderedSummaryGroups.add(normalizedSummary);
+        const parsedSummary = parseFailureSummary(normalizedSummary);
+
         return (
-        <Card key={o.id} variant="outlined">
-          <CardContent sx={{ py: 1.25, '&:last-child': { pb: 1.25 } }}>
-            <Stack spacing={1}>
-              <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
-                <Typography variant="caption" color="text.secondary">
-                  Ocurrencia {index + 1}
+          <Card
+            key={`group-${normalizedSummary}`}
+            variant="outlined"
+            sx={{ borderStyle: 'dashed' }}
+          >
+            <CardContent sx={{ py: 1.25, '&:last-child': { pb: 1.25 } }}>
+              <Typography variant="caption" color="text.secondary">
+                Motivo automático detectado en {allGroup.length}{' '}
+                {allGroup.length === 1 ? 'ocurrencia' : 'ocurrencias'}
+              </Typography>
+              {parsedSummary.heading && (
+                <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 700 }}>
+                  {parsedSummary.heading}
                 </Typography>
-                <Chip
-                  size="small"
-                  variant="outlined"
-                  label={o.target.join(', ')}
-                  sx={{
-                    maxWidth: '100%',
-                    height: 'auto',
-                    alignSelf: 'flex-start',
-                    '& .MuiChip-label': {
-                      display: 'block',
-                      whiteSpace: 'normal',
-                      overflowWrap: 'anywhere',
-                      wordBreak: 'break-word',
-                      lineHeight: 1.35,
-                      paddingTop: '8px',
-                      paddingBottom: '8px',
-                    },
-                  }}
-                />
-              </Stack>
-              {o.failureSummary && !sharedSummary && (
-                <Box
-                  sx={(theme) => ({
-                    px: 1.25,
-                    py: 1,
-                    borderRadius: 2,
-                    border: `1px solid ${theme.palette.divider}`,
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? 'rgba(148, 163, 184, 0.06)'
-                        : 'rgba(15, 23, 42, 0.03)',
-                  })}
-                >
-                  {parsedFailureSummary.heading && (
-                    <Typography variant="caption" color="text.secondary">
-                      {parsedFailureSummary.heading}
-                    </Typography>
-                  )}
-                  <Stack spacing={0.4} sx={{ mt: parsedFailureSummary.heading ? 0.5 : 0 }}>
-                    {parsedFailureSummary.items.map((item, failureIndex) => (
-                      <Typography key={`${o.id}-failure-${failureIndex}`} variant="body2">
-                        - {item}
-                      </Typography>
-                    ))}
-                  </Stack>
-                </Box>
               )}
-              <Box
-                sx={(theme) => ({
-                  p: 1.25,
-                  borderRadius: 2,
-                  border: `1px solid ${theme.palette.divider}`,
-                  backgroundColor:
-                    theme.palette.mode === 'dark'
-                      ? 'rgba(2, 6, 23, 0.92)'
-                      : 'rgba(15, 23, 42, 0.04)',
+              <Stack spacing={0.4} sx={{ mt: 0.75 }}>
+                {parsedSummary.items.map((summaryItem, summaryIndex) => (
+                  <Typography
+                    key={`${normalizedSummary}-${summaryIndex}`}
+                    variant="body2"
+                  >
+                    - {summaryItem}
+                  </Typography>
+                ))}
+              </Stack>
+              <Stack spacing={1} sx={{ mt: 1 }}>
+                {visibleGroup.map((groupItem) => {
+                  const visibleIndex = visibleItems.findIndex(
+                    (candidate) => candidate.id === groupItem.id,
+                  );
+                  return renderOccurrenceCard(groupItem, visibleIndex, true);
                 })}
-              >
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
-                  HTML detectado
-                </Typography>
-                <Box
-                  component="pre"
-                  sx={{
-                    m: 0,
-                    overflowX: 'auto',
-                    fontSize: 13,
-                    color: '#f8fafc',
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                  }}
-                >
-                  {o.htmlSnippet}
-                </Box>
-              </Box>
-            </Stack>
-          </CardContent>
-        </Card>
+              </Stack>
+            </CardContent>
+          </Card>
         );
       })}
       {remaining > 0 && (
-        <Button variant="text" onClick={() => setVisibleCount((c) => Math.min(items.length, c + STEP))}>
+        <Button
+          variant="text"
+          onClick={() => setVisibleCount((c) => Math.min(items.length, c + STEP))}
+        >
           Mostrar {Math.min(STEP, remaining)} más
         </Button>
       )}
@@ -426,16 +495,6 @@ export default function AuditsPage() {
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize]);
 
-  const filteredAudits = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    return audits.filter((a) => {
-      const matchesText = term.length === 0 || a.website.toLowerCase().includes(term);
-      const matchesStatus =
-        statusFilter === 'all' ? true : (a.status ?? '').toLowerCase() === statusFilter;
-      return matchesText && matchesStatus;
-    });
-  }, [audits, searchTerm, statusFilter]);
-
   const detailCounts = useMemo(() => {
     if (!detail) return { violations: 0, passes: 0, incomplete: 0 };
     const counts = { violations: 0, passes: 0, incomplete: 0 };
@@ -448,9 +507,33 @@ export default function AuditsPage() {
   }, [detail]);
 
   useEffect(() => {
-    void refreshAudits(page);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+    const requestId = ++listRequestIdRef.current;
+
+    async function fetchAudits() {
+      try {
+        setListLoading(true);
+        const data: AuditListResponse = await listAudits({
+          page,
+          pageSize,
+          order: 'desc',
+          status: statusFilter === 'all' ? undefined : statusFilter,
+          search: searchTerm.trim() || undefined,
+        });
+        if (requestId !== listRequestIdRef.current) return;
+        setAudits(data.items);
+        setTotal(data.total);
+        setPage(data.page);
+      } catch (err: unknown) {
+        if (requestId !== listRequestIdRef.current) return;
+        showToast({ message: formatErrorMessage(err), severity: 'error' });
+      } finally {
+        if (requestId !== listRequestIdRef.current) return;
+        setListLoading(false);
+      }
+    }
+
+    void fetchAudits();
+  }, [page, pageSize, searchTerm, showToast, statusFilter]);
 
   useEffect(() => {
     setAiSummary(null);
@@ -462,9 +545,28 @@ export default function AuditsPage() {
       setDetail(null);
       return;
     }
-    void loadDetail(selectedId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId]);
+
+    const auditId = selectedId;
+    const requestId = ++detailRequestIdRef.current;
+
+    async function fetchDetail() {
+      try {
+        setDetailLoading(true);
+        const data = await getAudit(auditId);
+        if (requestId !== detailRequestIdRef.current) return;
+        setDetail(data);
+      } catch (err: unknown) {
+        if (requestId !== detailRequestIdRef.current) return;
+        setDetail(null);
+        showToast({ message: formatErrorMessage(err), severity: 'error' });
+      } finally {
+        if (requestId !== detailRequestIdRef.current) return;
+        setDetailLoading(false);
+      }
+    }
+
+    void fetchDetail();
+  }, [selectedId, showToast]);
 
   useEffect(() => {
     if (!detail) return;
@@ -490,6 +592,11 @@ export default function AuditsPage() {
   }, [detail]);
 
   async function refreshAudits(nextPage = 1) {
+    if (nextPage !== page) {
+      setPage(nextPage);
+      return;
+    }
+
     const requestId = ++listRequestIdRef.current;
     try {
       setListLoading(true);
@@ -497,34 +604,19 @@ export default function AuditsPage() {
         page: nextPage,
         pageSize,
         order: 'desc',
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        search: searchTerm.trim() || undefined,
       });
       if (requestId !== listRequestIdRef.current) return;
       setAudits(data.items);
       setTotal(data.total);
       setPage(data.page);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (requestId !== listRequestIdRef.current) return;
       showToast({ message: formatErrorMessage(err), severity: 'error' });
     } finally {
       if (requestId !== listRequestIdRef.current) return;
       setListLoading(false);
-    }
-  }
-
-  async function loadDetail(id: number) {
-    const requestId = ++detailRequestIdRef.current;
-    try {
-      setDetailLoading(true);
-      const data = await getAudit(id);
-      if (requestId !== detailRequestIdRef.current) return;
-      setDetail(data);
-    } catch (err: any) {
-      if (requestId !== detailRequestIdRef.current) return;
-      setDetail(null);
-      showToast({ message: formatErrorMessage(err), severity: 'error' });
-    } finally {
-      if (requestId !== detailRequestIdRef.current) return;
-      setDetailLoading(false);
     }
   }
 
@@ -549,7 +641,7 @@ export default function AuditsPage() {
       showToast({ message: 'Auditoría lanzada correctamente', severity: 'success' });
       await refreshAudits(1);
       navigate('/audits');
-    } catch (err: any) {
+    } catch (err: unknown) {
       showToast({ message: formatErrorMessage(err), severity: 'error' });
       await refreshAudits(1);
     } finally {
@@ -569,7 +661,7 @@ export default function AuditsPage() {
       setDetail(null);
       navigate('/audits');
       showToast({ message: 'Histórico borrado', severity: 'success' });
-    } catch (err: any) {
+    } catch (err: unknown) {
       showToast({ message: formatErrorMessage(err), severity: 'error' });
     } finally {
       setLoading(false);
@@ -586,7 +678,7 @@ export default function AuditsPage() {
         message: `Resumen IA generado (${aiSourceLabel(data.source)})`,
         severity: 'success',
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       showToast({ message: formatErrorMessage(err), severity: 'error' });
     } finally {
       setAiSummaryLoading(false);
@@ -648,7 +740,7 @@ export default function AuditsPage() {
         message: `Explicación IA generada para ${ruleId} (${aiSourceLabel(data.source)})`,
         severity: 'success',
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       showToast({ message: formatErrorMessage(err), severity: 'error' });
     } finally {
       setAiRuleLoading((prev) => ({ ...prev, [key]: false }));
@@ -770,7 +862,10 @@ export default function AuditsPage() {
                 label="Buscar por URL"
                 placeholder="example.com"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setPage(1);
+                  setSearchTerm(e.target.value);
+                }}
               />
               <FormControl size="small" sx={{ minWidth: 160 }}>
                 <InputLabel id="status-filter-label">Estado</InputLabel>
@@ -778,13 +873,15 @@ export default function AuditsPage() {
                   labelId="status-filter-label"
                   label="Estado"
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as AuditStatusFilter)}
+                  onChange={(e) => {
+                    setPage(1);
+                    setStatusFilter(e.target.value as AuditStatusFilter);
+                  }}
                 >
                   <MenuItem value="all">Todos</MenuItem>
                   <MenuItem value="running">En ejecución</MenuItem>
                   <MenuItem value="completed">Completadas</MenuItem>
                   <MenuItem value="failed">Fallidas</MenuItem>
-                  <MenuItem value="pending">Pendientes</MenuItem>
                 </Select>
               </FormControl>
               {(searchTerm.length > 0 || statusFilter !== 'all') && (
@@ -792,6 +889,7 @@ export default function AuditsPage() {
                   <Button
                     variant="text"
                     onClick={() => {
+                      setPage(1);
                       setSearchTerm('');
                       setStatusFilter('all');
                     }}
@@ -811,7 +909,7 @@ export default function AuditsPage() {
             )}
 
             <List disablePadding>
-              {filteredAudits.map((a) => {
+              {audits.map((a) => {
                 const chip = statusChipProps(a.status ?? null);
                 const isSelected = selectedId === a.id;
                 const disabled = a.id < 0;
@@ -860,8 +958,8 @@ export default function AuditsPage() {
             {!listLoading && audits.length === 0 && (
               <Typography color="text.secondary">Sin auditorías todavía.</Typography>
             )}
-            {!listLoading && audits.length > 0 && filteredAudits.length === 0 && (
-              <Typography color="text.secondary">No hay coincidencias con esos filtros.</Typography>
+            {!listLoading && total === 0 && (searchTerm.length > 0 || statusFilter !== 'all') && (
+              <Typography color="text.secondary">No hay auditorias que coincidan con esos filtros.</Typography>
             )}
 
             {totalPages > 1 && (
@@ -1281,7 +1379,7 @@ export default function AuditsPage() {
                                 </CardContent>
                               </Card>
                             )}
-                            <Occurrences
+                            <OccurrenceGroups
                               items={occ}
                               ruleType={r.type as 'violations' | 'passes' | 'incomplete'}
                             />

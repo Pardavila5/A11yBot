@@ -84,10 +84,10 @@ Rutas implementadas:
 Capacidades implementadas:
 
 - lanzar auditorias;
-- consultar historico paginado;
+- consultar historico paginado y filtrable;
 - abrir detalle completo;
 - generar resumen IA y explicaciones IA;
-- comparar auditorias;
+- comparar auditorias y visualizar comparativas A/B del aporte IA;
 - consultar runtime del backend y metricas IA.
 
 # Alcance cerrado y pendiente
@@ -97,14 +97,14 @@ Capacidades implementadas:
 - pipeline reproducible de auditoria;
 - persistencia completa de resultados;
 - comparacion entre auditorias;
-- capa IA inicial con trazabilidad;
+- capa IA con trazabilidad, reutilizacion de artefactos y A/B visible;
 - observabilidad basica de runtime y trazas IA.
 
 ## Pendiente recomendado
 
-- metricas persistentes por fase de auditoria;
-- visualizacion A/B mas completa en frontend;
-- exportes de reportes para defensa;
+- preparar evidencias para memoria/defensa;
+- documentar resultados A/B y limitaciones;
+- metricas persistentes por fase como trabajo futuro;
 - endurecimiento adicional si se quisiera acercar a produccion.
 
 # Limitaciones actuales

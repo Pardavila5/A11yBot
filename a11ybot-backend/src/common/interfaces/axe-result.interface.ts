@@ -1,18 +1,29 @@
+import {
+  NormalizedOccurrence,
+  NormalizedRule,
+} from './normalized-result.interface';
+
+export interface AxeNodeResult {
+  html: string;
+  target: string[];
+  failureSummary?: string;
+}
+
 export interface AxeIssue {
   id: string;
-  impact: string;
+  impact: string | null;
   description: string;
   help: string;
   helpUrl: string;
   tags: string[];
-  nodes: {
-    html: string;
-    target: string[];
-    failureSummary?: string;
-  }[];
+  nodes: AxeNodeResult[];
 }
 
-import { NormalizedRule, NormalizedOccurrence } from "./normalized-result.interface";
+export interface AxeResultsByType {
+  violations: AxeIssue[];
+  passes: AxeIssue[];
+  incomplete: AxeIssue[];
+}
 
 export interface AxeAuditResult {
   url: string;
@@ -20,4 +31,3 @@ export interface AxeAuditResult {
   rules: NormalizedRule[];
   occurrences: NormalizedOccurrence[];
 }
-

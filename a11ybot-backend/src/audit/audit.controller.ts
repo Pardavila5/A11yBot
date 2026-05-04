@@ -11,6 +11,7 @@ import {
   Patch,
   Delete,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { AuditService } from './audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAuditDto } from './dto/create-audit.dto';
@@ -18,6 +19,35 @@ import { CompareAuditDto } from './dto/compare-audit.dto';
 import { ListAuditsDto } from './dto/list-audits.dto';
 import { AuditDetailQueryDto } from './dto/audit-detail-query.dto';
 import { UpdateAuditDto } from './dto/update-audit.dto';
+
+type AuditListRecord = {
+  id: number;
+  website: { url: string };
+  timestamp: Date;
+  status: string | null;
+  notes: string | null;
+};
+
+type AuditDetailRecord = AuditListRecord & {
+  rawJson: unknown;
+  rules: Array<{
+    id: number;
+    ruleId: string;
+    impact: string | null;
+    description: string;
+    help: string;
+    helpUrl: string;
+    wcag: string | null;
+    type: string;
+  }>;
+  occurrences: Array<{
+    id: number;
+    ruleRef: number;
+    htmlSnippet: string;
+    target: string | null;
+    failureSummary: string | null;
+  }>;
+};
 
 @Controller('audits')
 export class AuditController {
@@ -36,11 +66,13 @@ export class AuditController {
     const pageSize = query.pageSize ?? 50;
     const order = query.order ?? 'desc';
     const skip = (page - 1) * pageSize;
+    const where = this.buildListWhere(query);
 
-    const total = await this.prisma.audit.count();
+    const total = await this.prisma.audit.count({ where });
     const audits = await this.prisma.audit.findMany({
       skip,
       take: pageSize,
+      where,
       include: {
         website: true,
       },
@@ -51,13 +83,7 @@ export class AuditController {
       total,
       page,
       pageSize,
-      items: audits.map((a) => ({
-        id: a.id,
-        website: a.website.url,
-        timestamp: a.timestamp,
-        status: (a as any).status ?? null,
-        notes: (a as any).notes ?? null,
-      })),
+      items: audits.map((audit) => this.mapListItem(audit)),
     };
   }
 
@@ -108,7 +134,7 @@ export class AuditController {
    * Estado de cola/concurrencia de auditorias en memoria
    */
   @Get('runtime')
-  async getAuditRuntime() {
+  getAuditRuntime() {
     return this.auditService.getAuditRuntimeStats();
   }
 
@@ -137,31 +163,7 @@ export class AuditController {
       throw new NotFoundException(`No existe auditoría con ID ${id}`);
     }
 
-    return {
-      id: audit.id,
-      url: audit.website.url,
-      timestamp: audit.timestamp,
-      status: (audit as any).status ?? null,
-      notes: (audit as any).notes ?? null,
-      rawJson: audit.rawJson,
-      rules: audit.rules.map((r) => ({
-        id: r.id,
-        ruleId: r.ruleId,
-        impact: r.impact,
-        description: r.description,
-        help: r.help,
-        helpUrl: r.helpUrl,
-        wcag: JSON.parse(r.wcag ?? '[]'),
-        type: r.type,
-      })),
-      occurrences: audit.occurrences.map((o) => ({
-        id: o.id,
-        ruleRef: o.ruleRef,
-        htmlSnippet: o.htmlSnippet,
-        target: JSON.parse(o.target),
-        failureSummary: o.failureSummary,
-      })),
-    };
+    return this.mapDetail(audit);
   }
 
   /**
@@ -178,7 +180,7 @@ export class AuditController {
       throw new NotFoundException(`No existe auditoría con ID ${id}`);
     }
 
-    const data: any = {};
+    const data: { status?: string; notes?: string | null } = {};
     if (dto.status !== undefined) data.status = dto.status;
     if (dto.notes !== undefined) data.notes = dto.notes;
 
@@ -189,8 +191,74 @@ export class AuditController {
 
     return {
       id: updated.id,
-      status: (updated as any).status ?? null,
-      notes: (updated as any).notes ?? null,
+      status: updated.status ?? null,
+      notes: updated.notes ?? null,
     };
+  }
+
+  private mapListItem(audit: AuditListRecord) {
+    return {
+      id: audit.id,
+      website: audit.website.url,
+      timestamp: audit.timestamp,
+      status: audit.status ?? null,
+      notes: audit.notes ?? null,
+    };
+  }
+
+  private buildListWhere(query: ListAuditsDto): Prisma.AuditWhereInput {
+    const where: Prisma.AuditWhereInput = {};
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    const search = query.search?.trim();
+    if (search) {
+      where.website = {
+        url: {
+          contains: search,
+        },
+      };
+    }
+
+    return where;
+  }
+
+  private mapDetail(audit: AuditDetailRecord) {
+    return {
+      id: audit.id,
+      url: audit.website.url,
+      timestamp: audit.timestamp,
+      status: audit.status ?? null,
+      notes: audit.notes ?? null,
+      rawJson: audit.rawJson,
+      rules: audit.rules.map((rule) => ({
+        id: rule.id,
+        ruleId: rule.ruleId,
+        impact: rule.impact,
+        description: rule.description,
+        help: rule.help,
+        helpUrl: rule.helpUrl,
+        wcag: this.parseJsonStringArray(rule.wcag),
+        type: rule.type,
+      })),
+      occurrences: audit.occurrences.map((occurrence) => ({
+        id: occurrence.id,
+        ruleRef: occurrence.ruleRef,
+        htmlSnippet: occurrence.htmlSnippet,
+        target: this.parseJsonStringArray(occurrence.target),
+        failureSummary: occurrence.failureSummary,
+      })),
+    };
+  }
+
+  private parseJsonStringArray(value: string | null | undefined): string[] {
+    try {
+      const parsed: unknown = JSON.parse(value ?? '[]');
+      return Array.isArray(parsed) ? parsed.map((item) => String(item)) : [];
+    } catch {
+      return [];
+    }
   }
 }

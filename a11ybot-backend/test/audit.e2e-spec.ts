@@ -1,12 +1,13 @@
-process.env.DATABASE_URL = 'file:./dev-e2e.db';
+process.env.DATABASE_URL = `file:./dev-e2e-audit-${process.pid}.db`;
 
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaClient } from '@prisma/client';
 import { AppModule } from '../src/app.module';
+import { AxeResultsByType } from '../src/common/interfaces/axe-result.interface';
 import request from 'supertest';
-import fs from 'fs';
-import path from 'path';
+import type { App as SuperTestApp } from 'supertest/types';
+import { prepareE2eDatabase } from './e2e-db';
 
 // Mocks auto-contenidos (evitan problemas de hoisting)
 jest.mock('playwright', () => {
@@ -31,8 +32,10 @@ jest.mock('playwright', () => {
 });
 
 jest.mock('@axe-core/playwright', () => {
-  const axeQueue: any[] = [];
-  const analyzeMock = jest.fn(async () => axeQueue.shift() ?? { violations: [], passes: [], incomplete: [] });
+  const axeQueue: AxeResultsByType[] = [];
+  const analyzeMock = jest.fn(async () => {
+    return axeQueue.shift() ?? { violations: [], passes: [], incomplete: [] };
+  });
   return {
     AxeBuilder: jest.fn().mockImplementation(() => ({
       analyze: analyzeMock,
@@ -42,15 +45,13 @@ jest.mock('@axe-core/playwright', () => {
 });
 
 describe('Audits e2e', () => {
-  let app: INestApplication;
-  let prisma: PrismaClient;
-  const playwrightMock = jest.requireMock('playwright') as any;
-  const axeMock = jest.requireMock('@axe-core/playwright') as any;
+  let app: INestApplication | undefined;
+  let httpServer: SuperTestApp;
+  let prisma: PrismaClient | undefined;
+  const playwrightMock = jest.requireMock('playwright');
+  const axeMock = jest.requireMock('@axe-core/playwright');
 
-  const prismaDbPath = path.join(__dirname, '..', 'prisma', 'dev.db');
-  const testDbPath = path.join(__dirname, '..', 'prisma', 'dev-e2e.db');
-
-  const axeResultAudit1 = {
+  const axeResultAudit1: AxeResultsByType = {
     violations: [
       {
         id: 'rule-a',
@@ -72,7 +73,7 @@ describe('Audits e2e', () => {
     incomplete: [],
   };
 
-  const axeResultAudit2 = {
+  const axeResultAudit2: AxeResultsByType = {
     violations: [
       {
         id: 'rule-b',
@@ -95,13 +96,8 @@ describe('Audits e2e', () => {
   };
 
   beforeAll(async () => {
-    // Prepara una copia de la BD de desarrollo para no tocar datos reales
-    if (fs.existsSync(testDbPath)) {
-      fs.unlinkSync(testDbPath);
-    }
-    if (fs.existsSync(prismaDbPath)) {
-      fs.copyFileSync(prismaDbPath, testDbPath);
-    }
+    // Usa una copia de desarrollo si existe y, si no, crea el esquema desde migraciones.
+    await prepareE2eDatabase();
 
     prisma = new PrismaClient();
 
@@ -118,11 +114,12 @@ describe('Audits e2e', () => {
       }),
     );
     await app.init();
+    httpServer = app.getHttpServer() as SuperTestApp;
   });
 
   afterAll(async () => {
-    await app.close();
-    await prisma.$disconnect();
+    await app?.close();
+    await prisma?.$disconnect();
   });
 
   beforeEach(async () => {
@@ -136,17 +133,17 @@ describe('Audits e2e', () => {
     mockBrowser.newContext.mockClear();
 
     // Limpia tablas para que cada test sea independiente
-    await prisma.occurrence.deleteMany();
-    await prisma.rule.deleteMany();
-    await prisma.audit.deleteMany();
-    await prisma.website.deleteMany();
+    await prisma?.occurrence.deleteMany();
+    await prisma?.rule.deleteMany();
+    await prisma?.audit.deleteMany();
+    await prisma?.website.deleteMany();
   });
 
   it('POST /audits crea y persiste una auditoría', async () => {
     const { axeQueue } = axeMock.__mock;
     axeQueue.push(axeResultAudit1);
 
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer)
       .post('/audits')
       .send({ url: 'https://example.com' })
       .expect(201);
@@ -155,23 +152,23 @@ describe('Audits e2e', () => {
     expect(res.body.rules).toHaveLength(1);
     expect(res.body.occurrences).toHaveLength(1);
 
-    const audits = await prisma.audit.findMany();
+    const audits = await prisma?.audit.findMany();
     expect(audits).toHaveLength(1);
   });
 
   it('GET /audits lista las auditorías', async () => {
     const { axeQueue } = axeMock.__mock;
     axeQueue.push(axeResultAudit1, axeResultAudit2);
-    await request(app.getHttpServer())
+    await request(httpServer)
       .post('/audits')
       .send({ url: 'https://example.com' })
       .expect(201);
-    await request(app.getHttpServer())
+    await request(httpServer)
       .post('/audits')
       .send({ url: 'https://example.com' })
       .expect(201);
 
-    const res = await request(app.getHttpServer()).get('/audits').expect(200);
+    const res = await request(httpServer).get('/audits').expect(200);
     expect(res.body.total).toBe(2);
     expect(res.body.items).toHaveLength(2);
     expect(res.body.items[0].website).toBe('https://example.com/');
@@ -180,17 +177,15 @@ describe('Audits e2e', () => {
   it('GET /audits/:id devuelve detalle de auditoría', async () => {
     const { axeQueue } = axeMock.__mock;
     axeQueue.push(axeResultAudit1);
-    await request(app.getHttpServer())
+    await request(httpServer)
       .post('/audits')
       .send({ url: 'https://example.com' })
       .expect(201);
 
-    const list = await request(app.getHttpServer()).get('/audits').expect(200);
+    const list = await request(httpServer).get('/audits').expect(200);
     const id = list.body.items[0].id;
 
-    const detail = await request(app.getHttpServer())
-      .get(`/audits/${id}`)
-      .expect(200);
+    const detail = await request(httpServer).get(`/audits/${id}`).expect(200);
 
     expect(detail.body.rules).toHaveLength(1);
     expect(detail.body.occurrences).toHaveLength(1);
@@ -198,7 +193,7 @@ describe('Audits e2e', () => {
   });
 
   it('GET /audits/runtime devuelve estado operativo', async () => {
-    const runtime = await request(app.getHttpServer())
+    const runtime = await request(httpServer)
       .get('/audits/runtime')
       .expect(200);
 
@@ -211,22 +206,22 @@ describe('Audits e2e', () => {
     // Primera auditoría con rule-a
     const { axeQueue } = axeMock.__mock;
     axeQueue.push(axeResultAudit1);
-    await request(app.getHttpServer())
+    await request(httpServer)
       .post('/audits')
       .send({ url: 'https://example.com' })
       .expect(201);
 
     // Segunda auditoría con rule-b (rule-a desaparece => resuelta)
     axeQueue.push(axeResultAudit2);
-    await request(app.getHttpServer())
+    await request(httpServer)
       .post('/audits')
       .send({ url: 'https://example.com' })
       .expect(201);
 
-    const list = await request(app.getHttpServer()).get('/audits').expect(200);
+    const list = await request(httpServer).get('/audits').expect(200);
     const [newer, older] = list.body.items; // ordenado desc por timestamp
 
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer)
       .get(`/audits/compare?old=${older.id}&new=${newer.id}`)
       .expect(200);
 

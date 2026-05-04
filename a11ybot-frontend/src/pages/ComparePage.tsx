@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   compareAudits,
@@ -10,7 +10,6 @@ import {
   AiCompareSummary,
   AiCompareSummaryAB,
   AuditListResponse,
-  AuditSummary,
   CompareResult,
 } from '../types';
 import { formatDate, formatErrorMessage } from '../lib/format';
@@ -43,6 +42,21 @@ import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
 type CompareIds = { old?: number; new?: number };
+
+type CompareAuditOption = {
+  id: number;
+  url: string;
+  host: string;
+  label: string;
+};
+
+function getAuditHost(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
 
 function CompareList({ title, items }: { title: string; items: CompareResult['newViolations'] }) {
   return (
@@ -123,7 +137,9 @@ export default function ComparePage() {
 
   const [compareIds, setCompareIds] = useState<CompareIds>({});
   const [compareResult, setCompareResult] = useState<CompareResult | null>(null);
-  const [compareOptions, setCompareOptions] = useState<AuditSummary[]>([]);
+  const [compareOptions, setCompareOptions] = useState<CompareAuditOption[]>(
+    [],
+  );
   const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<AiCompareSummary | null>(null);
   const [aiSummaryAbLoading, setAiSummaryAbLoading] = useState(false);
@@ -132,7 +148,18 @@ export default function ComparePage() {
   const [loading, setLoading] = useState(false);
   const [optionsLoading, setOptionsLoading] = useState(false);
 
-  const auditOptions = useMemo(() => compareOptions, [compareOptions]);
+  const oldSelection = compareOptions.find((item) => item.id === compareIds.old);
+  const newSelection = compareOptions.find((item) => item.id === compareIds.new);
+  const selectableOldOptions = newSelection
+    ? compareOptions.filter(
+        (item) => item.host === newSelection.host || item.id === newSelection.id,
+      )
+    : compareOptions;
+  const selectableNewOptions = oldSelection
+    ? compareOptions.filter(
+        (item) => item.host === oldSelection.host || item.id === oldSelection.id,
+      )
+    : compareOptions;
 
   useEffect(() => {
     void loadCompareOptions();
@@ -147,22 +174,35 @@ export default function ComparePage() {
       setCompareIds({ old: oldId, new: newId });
       void runCompare(oldId, newId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams]);
 
   async function loadCompareOptions() {
     const requestId = ++optionsRequestIdRef.current;
     try {
       setOptionsLoading(true);
-      const data: AuditListResponse = await listAudits({
-        page: 1,
-        pageSize: 200,
-        order: 'desc',
-      });
+      const pageSize = 200;
+      let page = 1;
+      let totalPages = 1;
+      const allItems: AuditListResponse['items'] = [];
+
+      while (page <= totalPages) {
+        const data: AuditListResponse = await listAudits({
+          page,
+          pageSize,
+          order: 'desc',
+        });
+        if (requestId !== optionsRequestIdRef.current) return;
+        allItems.push(...data.items);
+        totalPages = Math.max(1, Math.ceil(data.total / data.pageSize));
+        page += 1;
+      }
+
       if (requestId !== optionsRequestIdRef.current) return;
       setCompareOptions(
-        data.items.map((a) => ({
+        allItems.map((a) => ({
           id: a.id,
+          url: a.website,
+          host: getAuditHost(a.website),
           label: `#${a.id} - ${a.website} (${formatDate(a.timestamp)})`,
         })),
       );
@@ -184,7 +224,7 @@ export default function ComparePage() {
       const data = await compareAudits(oldId, newId);
       if (requestId !== compareRequestIdRef.current) return;
       setCompareResult(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (requestId !== compareRequestIdRef.current) return;
       setCompareResult(null);
       setAiSummary(null);
@@ -200,6 +240,13 @@ export default function ComparePage() {
     e.preventDefault();
     if (!compareIds.old || !compareIds.new || compareIds.old === compareIds.new) {
       showToast({ message: 'Selecciona dos auditorías distintas', severity: 'warning' });
+      return;
+    }
+    if (oldSelection && newSelection && oldSelection.host !== newSelection.host) {
+      showToast({
+        message: 'Selecciona auditorias del mismo dominio para comparar',
+        severity: 'warning',
+      });
       return;
     }
     setSearchParams({ old: String(compareIds.old), new: String(compareIds.new) });
@@ -219,7 +266,7 @@ export default function ComparePage() {
         message: `Resumen IA de comparación generado (${aiSourceLabel(data.source)})`,
         severity: 'success',
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       showToast({ message: formatErrorMessage(err), severity: 'error' });
     } finally {
       setAiSummaryLoading(false);
@@ -279,7 +326,7 @@ export default function ComparePage() {
             </Tooltip>
           </Stack>
 
-          {optionsLoading && auditOptions.length === 0 ? (
+          {optionsLoading && compareOptions.length === 0 ? (
             <Box
               sx={{
                 mt: 2,
@@ -311,13 +358,28 @@ export default function ComparePage() {
                   labelId="old-label"
                   label="Old"
                   value={compareIds.old ?? ''}
-                  onChange={(e) =>
-                    setCompareIds((p) => ({ ...p, old: e.target.value ? Number(e.target.value) : undefined }))
-                  }
+                  onChange={(e) => {
+                    const nextOld = e.target.value ? Number(e.target.value) : undefined;
+                    const nextOldOption = compareOptions.find((item) => item.id === nextOld);
+                    setCompareIds((previous) => {
+                      const currentNewOption = compareOptions.find(
+                        (item) => item.id === previous.new,
+                      );
+                      const keepNew =
+                        !nextOldOption ||
+                        !currentNewOption ||
+                        currentNewOption.host === nextOldOption.host;
+                      return {
+                        ...previous,
+                        old: nextOld,
+                        new: keepNew ? previous.new : undefined,
+                      };
+                    });
+                  }}
                   disabled={optionsLoading}
                 >
                 <MenuItem value="">Old</MenuItem>
-                {auditOptions.map((o) => (
+                {selectableOldOptions.map((o) => (
                   <MenuItem key={o.id} value={o.id}>
                     {o.label}
                   </MenuItem>
@@ -331,13 +393,28 @@ export default function ComparePage() {
                   labelId="new-label"
                   label="New"
                   value={compareIds.new ?? ''}
-                  onChange={(e) =>
-                    setCompareIds((p) => ({ ...p, new: e.target.value ? Number(e.target.value) : undefined }))
-                  }
+                  onChange={(e) => {
+                    const nextNew = e.target.value ? Number(e.target.value) : undefined;
+                    const nextNewOption = compareOptions.find((item) => item.id === nextNew);
+                    setCompareIds((previous) => {
+                      const currentOldOption = compareOptions.find(
+                        (item) => item.id === previous.old,
+                      );
+                      const keepOld =
+                        !nextNewOption ||
+                        !currentOldOption ||
+                        currentOldOption.host === nextNewOption.host;
+                      return {
+                        ...previous,
+                        old: keepOld ? previous.old : undefined,
+                        new: nextNew,
+                      };
+                    });
+                  }}
                   disabled={optionsLoading}
                 >
                 <MenuItem value="">New</MenuItem>
-                {auditOptions.map((o) => (
+                {selectableNewOptions.map((o) => (
                   <MenuItem key={o.id} value={o.id}>
                     {o.label}
                   </MenuItem>

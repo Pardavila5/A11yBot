@@ -1,6 +1,6 @@
 # Memoria operativa - A11yBot
 
-Ultima actualizacion: 2026-03-24
+Ultima actualizacion: 2026-05-04
 
 ## Proposito del proyecto
 
@@ -27,17 +27,19 @@ A11yBot es un sistema de auditoria automatica de accesibilidad web para TFG:
 
 - La raiz `A11yBot/` es el punto unico de versionado del proyecto.
 - El backend expone auditoria, comparacion, runtime y capa IA con trazas persistentes.
-- El frontend cubre dashboard, historico, detalle, comparacion, visualizacion A/B de IA y pantalla `/ops`.
+- El frontend cubre dashboard, historico filtrable, detalle, comparacion, visualizacion A/B de IA y pantalla `/ops`.
 - La salida IA mantiene modo dual:
   - sin `OPENAI_API_KEY`: heuristico local estable;
   - con `OPENAI_API_KEY`: enriquecimiento remoto con fallback automatico.
+- Los resumenes IA, explicaciones por regla y ramas A/B se apoyan en trazas persistidas para favorecer reutilizacion y trazabilidad.
+- Las reglas `incomplete` se tratan como revision manual, no como fallo confirmado ni como cumplimiento.
 - La documentacion vigente debe venir de memoria, roadmap y codigo actual; `A11yBot_CONTEXT.md` es contexto academico, no un snapshot tecnico congelado.
 
 ## Prioridades activas
 
-1. Seguridad y fiabilidad backend (SSRF, timeouts, reintentos y cola robusta).
-2. Observabilidad y calidad (metricas por fase, logs estructurados, tests).
-3. IA util y evaluable para memoria (explicacion, priorizacion, sugerencias y A/B ya visible en frontend).
+1. Cierre tecnico y verificacion reproducible (builds, lint, unitarias y e2e).
+2. Evidencias para memoria/defensa (capturas, trazas IA, comparativas A/B y resultados de pruebas).
+3. Congelar alcance funcional salvo ajustes menores de robustez o coherencia documental.
 
 ## Riesgos a vigilar
 

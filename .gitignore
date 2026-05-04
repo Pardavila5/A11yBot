@@ -19,6 +19,8 @@
 **/prisma/dev.db-journal
 **/prisma/dev-e2e.db
 **/prisma/dev-e2e.db-journal
+**/prisma/migration-check.db
+**/prisma/migration-check.db-journal
 
 # Environment files
 **/.env

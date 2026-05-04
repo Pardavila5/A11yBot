@@ -31,6 +31,8 @@ export type AuditListResponse = {
   items: AuditListItem[];
 };
 
+export type AuditStatusFilter = 'all' | 'running' | 'completed' | 'failed';
+
 export type AuditSummary = {
   id: number;
   label: string;
@@ -248,6 +250,4 @@ export type AiTraceItem = {
   latencyMs: number;
   success: boolean;
   errorMessage: string | null;
-  requestMeta: unknown;
-  responseMeta: unknown;
 };

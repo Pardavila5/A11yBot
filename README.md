@@ -22,8 +22,17 @@ Backend:
 ```bash
 cd a11ybot-backend
 npm install
+npx prisma generate
+npx prisma migrate deploy
 npx playwright install chromium
 npm run start:dev
+```
+
+Antes del primer arranque, crea `a11ybot-backend/.env` con al menos:
+
+```bash
+DATABASE_URL="file:./dev.db"
+OPENAI_API_KEY=""
 ```
 
 Frontend:
@@ -32,6 +41,19 @@ Frontend:
 cd a11ybot-frontend
 npm install
 npm run dev
+```
+
+Verificacion recomendada antes de congelar cambios:
+
+```bash
+cd a11ybot-backend
+npm run build
+npm test -- --runInBand
+npm run test:e2e -- --runInBand
+
+cd ../a11ybot-frontend
+npm run lint
+npm run build
 ```
 
 ## Objetivo del repositorio
@@ -44,3 +66,4 @@ La raiz del workspace es ahora el punto unico de versionado del TFG. El codigo, 
 - El backend no incorpora autenticacion ni autorizacion.
 - La cola de auditorias actual es en memoria.
 - SQLite cubre bien el estado actual, pero no es la opcion final mas escalable.
+- La capa IA es asistiva y trazable; no sustituye la evidencia determinista de Playwright + axe-core.

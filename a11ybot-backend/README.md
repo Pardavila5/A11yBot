@@ -13,6 +13,8 @@ API NestJS para auditoria automatica de accesibilidad con Playwright + axe-core 
 ```bash
 cd a11ybot-backend
 npm install
+npx prisma generate
+npx prisma migrate deploy
 npx playwright install chromium
 ```
 
@@ -38,6 +40,12 @@ Desarrollo:
 npm run start:dev
 ```
 
+Si quieres reiniciar la base local desde cero:
+
+```bash
+npx prisma migrate reset --force
+```
+
 Produccion:
 
 ```bash
@@ -48,7 +56,7 @@ npm run start:prod
 ## Endpoints principales
 
 - `POST /audits`: ejecuta una auditoria y persiste el resultado.
-- `GET /audits`: listado paginado del historico.
+- `GET /audits`: listado paginado del historico, con filtros por estado y URL.
 - `GET /audits/:id`: detalle con reglas y ocurrencias.
 - `PATCH /audits/:id`: actualiza `status` y `notes`.
 - `DELETE /audits`: borra todo el historico.
@@ -86,7 +94,8 @@ npm test
 npm run test:e2e
 ```
 
-Las e2e usan `prisma/dev-e2e.db` y mocks de Playwright/axe.
+Las e2e usan una SQLite temporal generada durante la ejecucion y mocks de Playwright/axe.
+El bootstrap e2e aplica las migraciones reales del proyecto para no depender de una `dev.db` previa ni de datos locales.
 
 ## Rutas de interes
 
@@ -94,6 +103,7 @@ Las e2e usan `prisma/dev-e2e.db` y mocks de Playwright/axe.
 - `src/audit/audit.service.ts`: flujo principal de auditoria.
 - `src/ai/ai.service.ts`: capa IA y persistencia de trazas.
 - `prisma/schema.prisma`: modelo de datos.
+- `prisma/migrations/`: cambios versionados del esquema de base de datos.
 - `test/audit.e2e-spec.ts`: flujo backend principal.
 
 ## Limitaciones actuales
@@ -101,6 +111,7 @@ Las e2e usan `prisma/dev-e2e.db` y mocks de Playwright/axe.
 - CORS abierto para el frontend actual.
 - Sin autenticacion ni autorizacion.
 - Cola de auditorias en memoria.
+- SQLite local como persistencia suficiente para el alcance del TFG.
 - Enfoque orientado a TFG y entorno controlado, no a produccion.
 
 ## Contexto TFG

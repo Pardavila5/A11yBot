@@ -42,7 +42,7 @@ export default function OpsPage() {
       setRuntime(runtimeData);
       setStats(statsData);
       setTraces(tracesData.items);
-    } catch (error: any) {
+    } catch (error: unknown) {
       showToast({ message: formatErrorMessage(error), severity: 'error' });
     } finally {
       setLoading(false);
@@ -169,6 +169,12 @@ export default function OpsPage() {
                     <Typography sx={{ fontWeight: 800 }}>#{trace.id}</Typography>
                     <Chip size="small" label={trace.operation} variant="outlined" />
                     <Chip size="small" label={trace.source} />
+                    <Chip
+                      size="small"
+                      label={trace.success ? 'ok' : 'fallback'}
+                      color={trace.success ? 'success' : 'warning'}
+                      variant="outlined"
+                    />
                     <Chip size="small" label={`${trace.latencyMs}ms`} variant="outlined" />
                     {trace.model && <Chip size="small" label={trace.model} variant="outlined" />}
                     <Typography variant="caption" color="text.secondary">

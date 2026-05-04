@@ -6,10 +6,14 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AxeBuilder } from '@axe-core/playwright';
+import { Prisma } from '@prisma/client';
 import { Browser, BrowserContext, Page, chromium } from 'playwright';
-import { promises as dns } from 'node:dns';
+import { LookupAddress, promises as dns } from 'node:dns';
 import { isIP } from 'node:net';
-import { AxeAuditResult } from '../common/interfaces/axe-result.interface';
+import {
+  AxeAuditResult,
+  AxeResultsByType,
+} from '../common/interfaces/axe-result.interface';
 import {
   NormalizedOccurrence,
   NormalizedRule,
@@ -32,6 +36,43 @@ type SerializedViolation = {
     target: string[];
     failureSummary: string | null;
   }[];
+};
+
+type ViolationRuleRecord = {
+  id: number;
+  ruleId: string;
+  impact: string | null;
+  description: string;
+  help: string;
+  helpUrl: string;
+  wcag: string | null;
+  type: string;
+};
+
+type ViolationOccurrenceRecord = {
+  id: number;
+  ruleRef: number;
+  htmlSnippet: string;
+  target: string | null;
+  failureSummary: string | null;
+  rule: {
+    type: string;
+  };
+};
+
+type CompareAuditRecord = {
+  id: number;
+  timestamp: Date;
+  website: {
+    url: string;
+  };
+  rules: ViolationRuleRecord[];
+  occurrences: ViolationOccurrenceRecord[];
+};
+
+type ViolationSnapshotEntry = {
+  rule: ViolationRuleRecord;
+  occurrences: ViolationOccurrenceRecord[];
 };
 
 @Injectable()
@@ -115,12 +156,12 @@ export class AuditService {
         rules,
         occurrences,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (auditId) {
-        await this.markAuditFailed(auditId, error?.message ?? 'unknown error');
+        await this.markAuditFailed(auditId, this.getErrorMessage(error));
       }
 
-      const message = error?.message ?? String(error);
+      const message = this.getErrorMessage(error);
       this.logger.error(`audit.failed url=${rawUrl} reason="${message}"`);
 
       if (message.includes('Timeout')) {
@@ -239,7 +280,7 @@ export class AuditService {
     };
   }
 
-  async getAuditRuntimeStats() {
+  getAuditRuntimeStats() {
     return {
       activeAudits: this.activeAudits,
       activeByHost: Object.fromEntries(this.activeByHost.entries()),
@@ -290,7 +331,7 @@ export class AuditService {
   private async saveAuditResults(
     auditId: number,
     timestamp: Date,
-    rawResults: any,
+    rawResults: AxeResultsByType,
     rules: NormalizedRule[],
     occurrences: NormalizedOccurrence[],
   ): Promise<void> {
@@ -298,7 +339,7 @@ export class AuditService {
       await tx.audit.update({
         where: { id: auditId },
         data: {
-          rawJson: rawResults,
+          rawJson: rawResults as unknown as Prisma.InputJsonValue,
           timestamp,
           status: 'completed',
           notes: null,
@@ -319,7 +360,10 @@ export class AuditService {
             type: rule.type,
           },
         });
-        ruleIdMap.set(this.buildRuleKey(rule.ruleId, rule.type), createdRule.id);
+        ruleIdMap.set(
+          this.buildRuleKey(rule.ruleId, rule.type),
+          createdRule.id,
+        );
       }
 
       for (const occ of occurrences) {
@@ -345,8 +389,11 @@ export class AuditService {
     });
   }
 
-  private async executeAuditWithRetries(page: Page, url: string): Promise<{
-    axeResults: any;
+  private async executeAuditWithRetries(
+    page: Page,
+    url: string,
+  ): Promise<{
+    axeResults: AxeResultsByType;
     attemptsUsed: number;
   }> {
     const totalAttempts = this.maxRetries + 1;
@@ -359,18 +406,20 @@ export class AuditService {
           waitUntil: 'networkidle',
           timeout: this.defaultTimeoutMs,
         });
-        const axeResults = await new AxeBuilder({ page }).analyze();
+        const axeResults = (await new AxeBuilder({
+          page,
+        }).analyze()) as AxeResultsByType;
         const elapsed = Date.now() - start;
         this.logger.log(
           `audit.attempt.ok url=${url} attempt=${attempt}/${totalAttempts} elapsedMs=${elapsed}`,
         );
         return { axeResults, attemptsUsed: attempt };
-      } catch (error: any) {
+      } catch (error: unknown) {
         lastError = error;
         const elapsed = Date.now() - start;
         const retryable = this.isRetryableAuditError(error);
         this.logger.warn(
-          `audit.attempt.fail url=${url} attempt=${attempt}/${totalAttempts} retryable=${retryable} elapsedMs=${elapsed} reason="${error?.message ?? error}"`,
+          `audit.attempt.fail url=${url} attempt=${attempt}/${totalAttempts} retryable=${retryable} elapsedMs=${elapsed} reason="${this.getErrorMessage(error)}"`,
         );
 
         if (!retryable || attempt >= totalAttempts) {
@@ -385,7 +434,7 @@ export class AuditService {
   }
 
   private isRetryableAuditError(error: unknown): boolean {
-    const message = String((error as any)?.message ?? error).toLowerCase();
+    const message = this.getErrorMessage(error).toLowerCase();
     return (
       message.includes('timeout') ||
       message.includes('net::err_') ||
@@ -427,7 +476,7 @@ export class AuditService {
       );
     }
 
-    let resolved: Array<{ address: string }> = [];
+    let resolved: LookupAddress[] = [];
     try {
       resolved = await dns.lookup(hostname, { all: true, verbatim: true });
     } catch {
@@ -552,7 +601,7 @@ export class AuditService {
     return `${ruleId}::${type}`;
   }
 
-  private normalize(results: any): {
+  private normalize(results: AxeResultsByType): {
     rules: NormalizedRule[];
     occurrences: NormalizedOccurrence[];
   } {
@@ -597,9 +646,9 @@ export class AuditService {
   }
 
   private extractViolationSnapshot(
-    audit: any,
-  ): Map<string, { rule: any; occurrences: any[] }> {
-    const occurrencesByRule = new Map<number, any[]>();
+    audit: CompareAuditRecord,
+  ): Map<string, ViolationSnapshotEntry> {
+    const occurrencesByRule = new Map<number, ViolationOccurrenceRecord[]>();
     for (const occurrence of audit.occurrences || []) {
       if (occurrence.rule?.type !== 'violations') continue;
       const existing = occurrencesByRule.get(occurrence.ruleRef) ?? [];
@@ -607,7 +656,7 @@ export class AuditService {
       occurrencesByRule.set(occurrence.ruleRef, existing);
     }
 
-    const snapshot = new Map<string, { rule: any; occurrences: any[] }>();
+    const snapshot = new Map<string, ViolationSnapshotEntry>();
     for (const rule of audit.rules || []) {
       if (rule.type !== 'violations') continue;
       const key = this.buildRuleKey(rule.ruleId, rule.type);
@@ -620,10 +669,9 @@ export class AuditService {
     return snapshot;
   }
 
-  private serializeViolation(value: {
-    rule: any;
-    occurrences: any[];
-  }): SerializedViolation {
+  private serializeViolation(
+    value: ViolationSnapshotEntry,
+  ): SerializedViolation {
     const { rule, occurrences } = value;
     return {
       ruleId: rule.ruleId,
@@ -631,24 +679,40 @@ export class AuditService {
       description: rule.description,
       help: rule.help,
       helpUrl: rule.helpUrl,
-      wcag: JSON.parse(rule.wcag ?? '[]'),
+      wcag: this.parseStoredStringArray(rule.wcag),
       type: 'violations',
       occurrences: occurrences.map((occurrence) => ({
         id: occurrence.id,
         htmlSnippet: occurrence.htmlSnippet,
-        target: JSON.parse(occurrence.target ?? '[]'),
+        target: this.parseStoredStringArray(occurrence.target),
         failureSummary: occurrence.failureSummary ?? null,
       })),
     };
   }
 
   private countOccurrences(
-    snapshot: Map<string, { rule: any; occurrences: any[] }>,
+    snapshot: Map<string, ViolationSnapshotEntry>,
   ): number {
     let count = 0;
     for (const value of snapshot.values()) {
       count += value.occurrences.length;
     }
     return count;
+  }
+
+  private getErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    return String(error);
+  }
+
+  private parseStoredStringArray(value: string | null | undefined): string[] {
+    try {
+      const parsed: unknown = JSON.parse(value ?? '[]');
+      return Array.isArray(parsed) ? parsed.map((item) => String(item)) : [];
+    } catch {
+      return [];
+    }
   }
 }

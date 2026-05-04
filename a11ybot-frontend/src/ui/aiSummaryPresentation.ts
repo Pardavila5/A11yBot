@@ -61,6 +61,5 @@ export function auditStatusLabel(status: string | null | undefined): string {
   if (status === 'running') return 'en ejecución';
   if (status === 'failed') return 'fallida';
   if (status === 'completed') return 'completada';
-  if (status === 'pending') return 'pendiente';
   return status ?? 'n/a';
 }

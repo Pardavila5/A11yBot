@@ -7,6 +7,7 @@ import {
   AiTraceItem,
   AiTraceStats,
   AuditDetail,
+  AuditStatusFilter,
   AuditListResponse,
   AuditRuntimeStats,
   CompareResult,
@@ -31,6 +32,8 @@ export async function listAudits(params?: {
   page?: number;
   pageSize?: number;
   order?: 'asc' | 'desc';
+  status?: Exclude<AuditStatusFilter, 'all'>;
+  search?: string;
 }): Promise<AuditListResponse> {
   const page = params?.page ?? 1;
   const pageSize = params?.pageSize ?? 10;
@@ -40,6 +43,12 @@ export async function listAudits(params?: {
     pageSize: String(pageSize),
     order,
   });
+  if (params?.status) {
+    qs.set('status', params.status);
+  }
+  if (params?.search) {
+    qs.set('search', params.search);
+  }
   const res = await fetch(`${API_BASE}/audits?${qs.toString()}`);
   if (!res.ok) throw new Error('No se pudieron cargar las auditorias');
   return res.json();

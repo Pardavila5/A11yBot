@@ -84,6 +84,63 @@ type RuleExplanationArtifact = {
   };
 };
 
+type AuditSummaryInput = {
+  auditId: number;
+  url: string;
+  violationRules: number;
+  incompleteRules: number;
+  totalRules: number;
+  occurrences: number;
+  prioritizedRuleIds: string[];
+  topViolations: TopViolation[];
+};
+
+type CompareSummaryInput = {
+  oldId: number;
+  newId: number;
+  summary: {
+    newViolationRules: number;
+    resolvedViolationRules: number;
+    persistentViolationRules: number;
+  };
+};
+
+type RuleExplanationSample = {
+  target: string[];
+  failureSummary: string | null;
+  htmlSnippet: string;
+};
+
+type RuleExplanationInput = {
+  auditId: number;
+  ruleId: string;
+  ruleType: AiRuleType;
+  impact: string | null;
+  description: string;
+  help: string;
+  helpUrl: string;
+  wcag: string[];
+  occurrences: number;
+  samples: RuleExplanationSample[];
+};
+
+type OpenAiChatCompletionResponse = {
+  model?: string;
+  choices?: Array<{
+    message?: {
+      content?: string;
+    };
+  }>;
+};
+
+type AiTraceWhere = {
+  operation?: 'audit_summary' | 'compare_summary' | 'rule_explain';
+  source?: 'openai' | 'heuristic';
+  createdAt?: {
+    gte: Date;
+  };
+};
+
 const AB_MAX_RECOMMENDATIONS = 3;
 const AB_MAX_RULES = 5;
 
@@ -107,20 +164,40 @@ export class AiService implements OnModuleInit {
 
   async listTraces(query: ListAiTracesDto) {
     const limit = query.limit ?? 50;
-    const items = await this.prisma.aiTrace.findMany({
-      take: limit,
-      where: {
-        operation: query.operation,
-        source: query.source,
-        auditId: query.auditId,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    return { total: items.length, items };
+    const where = {
+      operation: query.operation,
+      source: query.source,
+      auditId: query.auditId,
+    };
+
+    const [total, items] = await Promise.all([
+      this.prisma.aiTrace.count({ where }),
+      this.prisma.aiTrace.findMany({
+        select: {
+          id: true,
+          createdAt: true,
+          operation: true,
+          source: true,
+          model: true,
+          auditId: true,
+          compareOldAudit: true,
+          compareNewAudit: true,
+          ruleId: true,
+          latencyMs: true,
+          success: true,
+          errorMessage: true,
+        },
+        take: limit,
+        where,
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    return { total, items };
   }
 
   async getTraceStats(query: AiTraceStatsDto) {
-    const where: any = {
+    const where: AiTraceWhere = {
       operation: query.operation,
       source: query.source,
     };
@@ -266,7 +343,9 @@ export class AiService implements OnModuleInit {
       options.forceHeuristic === true,
     );
     if (cached) {
-      this.logger.log(`AI audit_summary reuse: auditId=${auditId} traceId=${cached.traceId}`);
+      this.logger.log(
+        `AI audit_summary reuse: auditId=${auditId} traceId=${cached.traceId}`,
+      );
       return {
         traceId: cached.traceId,
         source: cached.artifact.source,
@@ -277,17 +356,21 @@ export class AiService implements OnModuleInit {
           id: audit.id,
           url: audit.website.url,
           timestamp: audit.timestamp,
-          status: (audit as any).status ?? null,
+          status: audit.status ?? null,
         },
         metrics: {
           rules: {
             total: audit.rules.length,
             violations: violations.length,
             passes: audit.rules.filter((r) => r.type === 'passes').length,
-            incomplete: audit.rules.filter((r) => r.type === 'incomplete').length,
+            incomplete: audit.rules.filter((r) => r.type === 'incomplete')
+              .length,
           },
           occurrences: audit.occurrences.length,
-          topViolations: cached.artifact.topViolations.slice(0, topViolationLimit),
+          topViolations: cached.artifact.topViolations.slice(
+            0,
+            topViolationLimit,
+          ),
         },
         executiveSummary: cached.artifact.executiveSummary,
         technicalSummary: cached.artifact.technicalSummary,
@@ -337,7 +420,8 @@ export class AiService implements OnModuleInit {
           auditId,
           url: audit.website.url,
           violationRules: violations.length,
-          incompleteRules: audit.rules.filter((r) => r.type === 'incomplete').length,
+          incompleteRules: audit.rules.filter((r) => r.type === 'incomplete')
+            .length,
           totalRules: audit.rules.length,
           occurrences: audit.occurrences.length,
           prioritizedRuleIds: ruleIdsForSummary,
@@ -390,7 +474,7 @@ export class AiService implements OnModuleInit {
       compareNewAudit: null,
       ruleId: null,
       latencyMs: Date.now() - startedAt,
-      success: true,
+      success: this.isTraceSuccessful(source, attempt),
       errorMessage: attempt.errorMessage,
       requestMeta: {
         forceHeuristic: options.forceHeuristic ?? false,
@@ -417,7 +501,7 @@ export class AiService implements OnModuleInit {
         id: audit.id,
         url: audit.website.url,
         timestamp: audit.timestamp,
-        status: (audit as any).status ?? null,
+        status: audit.status ?? null,
       },
       metrics: {
         rules: {
@@ -537,7 +621,7 @@ export class AiService implements OnModuleInit {
       compareNewAudit: newId,
       ruleId: null,
       latencyMs: Date.now() - startedAt,
-      success: true,
+      success: this.isTraceSuccessful(source, attempt),
       errorMessage: attempt.errorMessage,
       requestMeta: {
         forceHeuristic: options.forceHeuristic ?? false,
@@ -601,7 +685,9 @@ export class AiService implements OnModuleInit {
       );
     }
 
-    const matchingOccurrences = audit.occurrences.filter((o) => o.ruleRef === rule.id);
+    const matchingOccurrences = audit.occurrences.filter(
+      (o) => o.ruleRef === rule.id,
+    );
     const samples = matchingOccurrences
       .slice(0, options.maxOccurrences ?? 3)
       .map((occurrence) => ({
@@ -636,7 +722,7 @@ export class AiService implements OnModuleInit {
           id: audit.id,
           url: audit.website.url,
           timestamp: audit.timestamp.toISOString(),
-          status: (audit as any).status ?? null,
+          status: audit.status ?? null,
         },
         rule: {
           ruleId: rule.ruleId,
@@ -706,7 +792,7 @@ export class AiService implements OnModuleInit {
       compareNewAudit: null,
       ruleId,
       latencyMs: Date.now() - startedAt,
-      success: true,
+      success: this.isTraceSuccessful(source, attempt),
       errorMessage: attempt.errorMessage,
       requestMeta: {
         forceHeuristic: options.forceHeuristic ?? false,
@@ -718,7 +804,7 @@ export class AiService implements OnModuleInit {
 
     this.logAiResolution('rule_explain', source, attempt, traceId);
 
-      return {
+    return {
       traceId,
       source: artifact.source,
       generatedAt: artifact.generatedAt,
@@ -728,7 +814,7 @@ export class AiService implements OnModuleInit {
         id: audit.id,
         url: audit.website.url,
         timestamp: audit.timestamp.toISOString(),
-        status: (audit as any).status ?? null,
+        status: audit.status ?? null,
       },
       rule: {
         ruleId: rule.ruleId,
@@ -764,8 +850,9 @@ export class AiService implements OnModuleInit {
         : incomplete > 0
           ? 'No hay reglas críticas para priorizar, pero quedan comprobaciones incomplete que requieren revisión manual.'
           : 'No hay reglas críticas para priorizar.';
-    const recommendations: AiRecommendation[] = topViolations.slice(0, 3).map(
-      (item) => ({
+    const recommendations: AiRecommendation[] = topViolations
+      .slice(0, 3)
+      .map((item) => ({
         title: `Corregir ${item.ruleId}`,
         reason: `Regla prioritaria por impacto/recurrencia (ocurrencias: ${item.occurrences}).`,
         actions: [
@@ -775,8 +862,7 @@ export class AiService implements OnModuleInit {
         ],
         priority: item.score >= 8 ? 'high' : item.score >= 4 ? 'medium' : 'low',
         ruleId: item.ruleId,
-      }),
-    );
+      }));
 
     if (incomplete > 0) {
       recommendations.push({
@@ -807,7 +893,11 @@ export class AiService implements OnModuleInit {
     };
   }
 
-  private heuristicCompare(newRules: number, resolved: number, persistent: number) {
+  private heuristicCompare(
+    newRules: number,
+    resolved: number,
+    persistent: number,
+  ) {
     const executiveSummary = `Nuevas: ${newRules}, resueltas: ${resolved}, persistentes: ${persistent}.`;
     const technicalSummary =
       newRules > 0
@@ -853,7 +943,8 @@ export class AiService implements OnModuleInit {
       })
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
-        if (b.occurrences !== a.occurrences) return b.occurrences - a.occurrences;
+        if (b.occurrences !== a.occurrences)
+          return b.occurrences - a.occurrences;
         return a.ruleId.localeCompare(b.ruleId);
       });
 
@@ -875,7 +966,10 @@ export class AiService implements OnModuleInit {
     return recommendations.slice(0, limit ?? recommendations.length);
   }
 
-  private async generateOpenAiAuditSummary(input: any, attempt: OpenAiAttempt) {
+  private async generateOpenAiAuditSummary(
+    input: AuditSummaryInput,
+    attempt: OpenAiAttempt,
+  ) {
     const payload = await this.requestOpenAiJson(
       "Devuelve SOLO un objeto JSON sin markdown, en espanol de Espana, con estas claves exactas: executiveSummary (string), technicalSummary (string) y recommendations (array de objetos con title, reason, actions, priority y ruleId opcional). Usa terminologia precisa: 'reglas en violacion' para el numero de reglas, 'reglas incomplete' o 'reglas en revision manual' para los hallazgos no concluyentes y 'ocurrencias' para el numero de instancias. No digas que hay N violaciones si N corresponde a ocurrencias. Si hay reglas incomplete, menciónalas explícitamente y recomienda revisión manual; no las presentes como fallo confirmado.",
       input,
@@ -918,11 +1012,11 @@ export class AiService implements OnModuleInit {
   }
 
   private async generateOpenAiCompareSummary(
-    input: any,
+    input: CompareSummaryInput,
     attempt: OpenAiAttempt,
   ) {
     const payload = await this.requestOpenAiJson(
-      "Devuelve SOLO un objeto JSON sin markdown, en espanol de Espana, con estas claves exactas: executiveSummary (string), technicalSummary (string) y recommendations (array de objetos con title, reason, actions, priority y ruleId opcional). Distingue con precision entre nuevas, resueltas y persistentes.",
+      'Devuelve SOLO un objeto JSON sin markdown, en espanol de Espana, con estas claves exactas: executiveSummary (string), technicalSummary (string) y recommendations (array de objetos con title, reason, actions, priority y ruleId opcional). Distingue con precision entre nuevas, resueltas y persistentes.',
       input,
       attempt,
     );
@@ -963,13 +1057,11 @@ export class AiService implements OnModuleInit {
   }
 
   private async generateOpenAiRuleExplanation(
-    input: any,
+    input: RuleExplanationInput,
     attempt: OpenAiAttempt,
   ) {
     const payload = await this.requestOpenAiJson(
-      this.getRuleExplanationPrompt(
-        this.normalizeRuleType(this.getString(input, 'ruleType') ?? 'violations'),
-      ),
+      this.getRuleExplanationPrompt(input.ruleType),
       input,
       attempt,
     );
@@ -1012,7 +1104,10 @@ export class AiService implements OnModuleInit {
       explanation: {
         summary,
         whyItMatters,
-        fixes: fixes.length > 0 ? fixes : ['Revisar patrón base.', 'Validar cambio.', 'Reauditar.'],
+        fixes:
+          fixes.length > 0
+            ? fixes
+            : ['Revisar patrón base.', 'Validar cambio.', 'Reauditar.'],
         testChecklist:
           testChecklist.length > 0
             ? testChecklist
@@ -1153,7 +1248,7 @@ export class AiService implements OnModuleInit {
         return null;
       }
 
-      const data = (await res.json()) as any;
+      const data = (await res.json()) as OpenAiChatCompletionResponse;
       const content = data?.choices?.[0]?.message?.content ?? '';
       const parsed = this.tryParseJson(content);
       if (!parsed) {
@@ -1169,14 +1264,16 @@ export class AiService implements OnModuleInit {
       attempt.status = 'success';
       attempt.responseModel = data?.model ?? model;
       attempt.latencyMs = Date.now() - startedAt;
-      this.logger.log(`OpenAI OK [${attempt.responseModel}] ${attempt.latencyMs}ms`);
+      this.logger.log(
+        `OpenAI OK [${attempt.responseModel}] ${attempt.latencyMs}ms`,
+      );
       return { ...parsed, _model: attempt.responseModel };
-    } catch (error: any) {
-      const isAbort = error?.name === 'AbortError';
+    } catch (error: unknown) {
+      const isAbort = error instanceof Error && error.name === 'AbortError';
       attempt.status = isAbort ? 'timeout' : 'exception';
       attempt.errorMessage = isAbort
         ? `Timeout tras ${timeoutMs}ms`
-        : `${error?.message ?? error}`.slice(0, 200);
+        : this.getErrorMessage(error).slice(0, 200);
       attempt.latencyMs = Date.now() - startedAt;
       this.logger.warn(
         `OpenAI no disponible, se usará fallback heurístico: ${attempt.errorMessage}`,
@@ -1189,7 +1286,8 @@ export class AiService implements OnModuleInit {
 
   private tryParseJson(value: string): Record<string, unknown> | null {
     try {
-      return JSON.parse(value);
+      const parsed: unknown = JSON.parse(value);
+      return this.asRecord(parsed);
     } catch {
       return null;
     }
@@ -1207,11 +1305,11 @@ export class AiService implements OnModuleInit {
     return [];
   }
 
-  private getRecommendations(payload: Record<string, unknown>): AiRecommendation[] {
+  private getRecommendations(
+    payload: Record<string, unknown>,
+  ): AiRecommendation[] {
     const raw =
-      payload.recommendations ??
-      payload.recommendationList ??
-      payload.items;
+      payload.recommendations ?? payload.recommendationList ?? payload.items;
     if (!Array.isArray(raw)) return [];
 
     return raw
@@ -1239,10 +1337,16 @@ export class AiService implements OnModuleInit {
   ): 'high' | 'medium' | 'low' {
     const normalized = value?.trim().toLowerCase();
     if (!normalized) return 'medium';
-    if (['high', 'alta', 'alto', 'critical', 'critica', 'crítica'].includes(normalized)) {
+    if (
+      ['high', 'alta', 'alto', 'critical', 'critica', 'crítica'].includes(
+        normalized,
+      )
+    ) {
       return 'high';
     }
-    if (['medium', 'media', 'medio', 'moderate', 'moderada'].includes(normalized)) {
+    if (
+      ['medium', 'media', 'medio', 'moderate', 'moderada'].includes(normalized)
+    ) {
       return 'medium';
     }
     if (['low', 'baja', 'bajo', 'minor'].includes(normalized)) {
@@ -1309,10 +1413,7 @@ export class AiService implements OnModuleInit {
     return candidates;
   }
 
-  private getString(
-    payload: Record<string, unknown> | unknown,
-    key: string,
-  ): string | null {
+  private getString(payload: unknown, key: string): string | null {
     if (!payload || typeof payload !== 'object') return null;
     const value = (payload as Record<string, unknown>)[key];
     return typeof value === 'string' && value.trim().length > 0
@@ -1320,10 +1421,7 @@ export class AiService implements OnModuleInit {
       : null;
   }
 
-  private getStringArray(
-    payload: Record<string, unknown> | unknown,
-    key: string,
-  ): string[] {
+  private getStringArray(payload: unknown, key: string): string[] {
     if (!payload || typeof payload !== 'object') return [];
     const value = (payload as Record<string, unknown>)[key];
     if (!Array.isArray(value)) return [];
@@ -1335,7 +1433,7 @@ export class AiService implements OnModuleInit {
 
   private parseJsonArray(value: string | null | undefined): string[] {
     try {
-      const parsed = JSON.parse(value ?? '[]');
+      const parsed: unknown = JSON.parse(value ?? '[]');
       return Array.isArray(parsed) ? parsed.map((v) => String(v)) : [];
     } catch {
       return [];
@@ -1347,9 +1445,7 @@ export class AiService implements OnModuleInit {
     const attempt = (meta as Record<string, unknown>).openAiAttempt;
     if (!attempt || typeof attempt !== 'object') return 'unknown';
     const status = (attempt as Record<string, unknown>).status;
-    return typeof status === 'string' && status.length > 0
-      ? status
-      : 'unknown';
+    return typeof status === 'string' && status.length > 0 ? status : 'unknown';
   }
 
   private async findReusableAuditSummaryTrace(
@@ -1365,7 +1461,8 @@ export class AiService implements OnModuleInit {
     for (const item of items) {
       const requestMeta = this.asRecord(item.requestMeta);
       if (!requestMeta) continue;
-      if (this.asBoolean(requestMeta.forceHeuristic) !== forceHeuristic) continue;
+      if (this.asBoolean(requestMeta.forceHeuristic) !== forceHeuristic)
+        continue;
       const artifact = this.parseAuditSummaryArtifact(item.responseMeta);
       if (!artifact) continue;
       return { traceId: item.id, artifact };
@@ -1392,7 +1489,8 @@ export class AiService implements OnModuleInit {
     for (const item of items) {
       const requestMeta = this.asRecord(item.requestMeta);
       if (!requestMeta) continue;
-      if (this.asBoolean(requestMeta.forceHeuristic) !== forceHeuristic) continue;
+      if (this.asBoolean(requestMeta.forceHeuristic) !== forceHeuristic)
+        continue;
       const artifact = this.parseCompareSummaryArtifact(item.responseMeta);
       if (!artifact) continue;
       return { traceId: item.id, artifact };
@@ -1401,7 +1499,9 @@ export class AiService implements OnModuleInit {
     return null;
   }
 
-  private parseAuditSummaryArtifact(meta: unknown): AuditSummaryArtifact | null {
+  private parseAuditSummaryArtifact(
+    meta: unknown,
+  ): AuditSummaryArtifact | null {
     const responseMeta = this.asRecord(meta);
     if (!responseMeta || responseMeta.artifactVersion !== 1) return null;
     const artifact = this.asRecord(responseMeta.artifact);
@@ -1425,7 +1525,9 @@ export class AiService implements OnModuleInit {
     };
   }
 
-  private parseCompareSummaryArtifact(meta: unknown): CompareSummaryArtifact | null {
+  private parseCompareSummaryArtifact(
+    meta: unknown,
+  ): CompareSummaryArtifact | null {
     const responseMeta = this.asRecord(meta);
     if (!responseMeta || responseMeta.artifactVersion !== 1) return null;
     const artifact = this.asRecord(responseMeta.artifact);
@@ -1461,7 +1563,10 @@ export class AiService implements OnModuleInit {
     for (const item of items) {
       const requestMeta = this.asRecord(item.requestMeta);
       if (!requestMeta) continue;
-      if ((this.getString(requestMeta, 'ruleType') ?? 'violations') !== ruleType) continue;
+      if (
+        (this.getString(requestMeta, 'ruleType') ?? 'violations') !== ruleType
+      )
+        continue;
       const artifact = this.parseRuleExplanationArtifact(item.responseMeta);
       if (!artifact) continue;
       return { traceId: item.id, artifact };
@@ -1470,7 +1575,9 @@ export class AiService implements OnModuleInit {
     return null;
   }
 
-  private parseRuleExplanationArtifact(meta: unknown): RuleExplanationArtifact | null {
+  private parseRuleExplanationArtifact(
+    meta: unknown,
+  ): RuleExplanationArtifact | null {
     const responseMeta = this.asRecord(meta);
     if (!responseMeta || responseMeta.artifactVersion !== 1) return null;
     const artifact = this.asRecord(responseMeta.artifact);
@@ -1501,7 +1608,10 @@ export class AiService implements OnModuleInit {
   private parseTopViolations(value: unknown): TopViolation[] {
     if (!Array.isArray(value)) return [];
     return value
-      .filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === 'object')
+      .filter(
+        (entry): entry is Record<string, unknown> =>
+          !!entry && typeof entry === 'object',
+      )
       .map((entry) => {
         const ruleId = this.getString(entry, 'ruleId');
         const occurrences = this.asNumber(entry.occurrences);
@@ -1581,6 +1691,16 @@ export class AiService implements OnModuleInit {
     };
   }
 
+  private isTraceSuccessful(source: AiSource, attempt: OpenAiAttempt): boolean {
+    if (!attempt.attempted) {
+      return true;
+    }
+    if (source === 'openai') {
+      return attempt.status === 'success';
+    }
+    return attempt.status === 'forced_heuristic';
+  }
+
   private async saveTrace(input: {
     operation: 'audit_summary' | 'compare_summary' | 'rule_explain';
     source: 'heuristic' | 'openai';
@@ -1604,8 +1724,10 @@ export class AiService implements OnModuleInit {
         },
       });
       return created.id;
-    } catch (error: any) {
-      this.logger.warn(`No se pudo guardar traza IA: ${error?.message ?? error}`);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `No se pudo guardar traza IA: ${this.getErrorMessage(error)}`,
+      );
       return null;
     }
   }
@@ -1645,5 +1767,12 @@ export class AiService implements OnModuleInit {
     this.logger.warn(
       `AI ${operation}: source=heuristic status=${attempt.status ?? 'n/a'} reason=${attempt.errorMessage ?? 'n/a'} traceId=${traceId ?? 'n/a'}`,
     );
+  }
+
+  private getErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    return String(error);
   }
 }

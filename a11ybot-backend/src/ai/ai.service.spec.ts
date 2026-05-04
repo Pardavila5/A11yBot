@@ -4,12 +4,60 @@ import { AiService } from './ai.service';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 
+type TraceStoreItem = {
+  id: number;
+  createdAt?: Date;
+  operation?: string;
+  source?: string;
+  auditId?: number | null;
+  compareOldAudit?: number | null;
+  compareNewAudit?: number | null;
+  [key: string]: unknown;
+};
+
+type TraceWhere = {
+  operation?: string;
+  source?: string;
+  auditId?: number | null;
+  compareOldAudit?: number | null;
+  compareNewAudit?: number | null;
+};
+
+type TraceFindManyArgs = {
+  where?: TraceWhere;
+  take?: number;
+  orderBy?: {
+    createdAt?: 'asc' | 'desc';
+  };
+};
+
+type OpenAiAttemptMock = {
+  attempted: boolean;
+  status: string | null;
+  responseModel: string | null;
+};
+
+type RequestOpenAiJsonMock = (
+  systemPrompt: string,
+  userPayload: unknown,
+  attempt: OpenAiAttemptMock,
+) => Promise<Record<string, unknown> | null>;
+
+type AiServicePrivate = AiService & {
+  requestOpenAiJson: RequestOpenAiJsonMock;
+};
+
 describe('AiService', () => {
   let service: AiService;
-  let traceStore: Array<{ id: number; [key: string]: any }>;
+  let traceStore: TraceStoreItem[];
+  let auditServiceMock: { compareAudits: jest.Mock };
   let prisma: {
     audit: { findUnique: jest.Mock };
-    aiTrace: { create: jest.Mock; findMany: jest.Mock };
+    aiTrace: {
+      create: jest.Mock<Promise<TraceStoreItem>, [{ data: TraceStoreItem }]>;
+      count: jest.Mock<Promise<number>, [{ where?: TraceWhere }]>;
+      findMany: jest.Mock<Promise<TraceStoreItem[]>, [TraceFindManyArgs]>;
+    };
   };
 
   const auditFixture = {
@@ -81,43 +129,79 @@ describe('AiService', () => {
 
   beforeEach(async () => {
     traceStore = [];
+    auditServiceMock = {
+      compareAudits: jest.fn(),
+    };
     prisma = {
       audit: {
         findUnique: jest.fn().mockResolvedValue(auditFixture),
       },
       aiTrace: {
         create: jest.fn().mockImplementation(async ({ data }) => {
-          const created = { id: traceStore.length + 1, createdAt: new Date(), ...data };
+          const created: TraceStoreItem = {
+            id: traceStore.length + 1,
+            createdAt: new Date(),
+            ...data,
+          };
           traceStore.push(created);
           return created;
         }),
-        findMany: jest.fn().mockImplementation(async ({ where }) => {
-          return traceStore
-            .filter((item) => {
-              if (!where) return true;
-              if (where.operation && item.operation !== where.operation) return false;
-              if (
-                Object.prototype.hasOwnProperty.call(where, 'auditId') &&
-                item.auditId !== where.auditId
-              ) {
-                return false;
-              }
-              if (
-                Object.prototype.hasOwnProperty.call(where, 'compareOldAudit') &&
-                item.compareOldAudit !== where.compareOldAudit
-              ) {
-                return false;
-              }
-              if (
-                Object.prototype.hasOwnProperty.call(where, 'compareNewAudit') &&
-                item.compareNewAudit !== where.compareNewAudit
-              ) {
-                return false;
-              }
-              return true;
-            })
-            .sort((a, b) => b.id - a.id);
+        count: jest.fn().mockImplementation(async ({ where }) => {
+          return traceStore.filter((item) => {
+            if (!where) return true;
+            if (where.operation && item.operation !== where.operation)
+              return false;
+            if (where.source && item.source !== where.source) return false;
+            if (
+              Object.prototype.hasOwnProperty.call(where, 'auditId') &&
+              item.auditId !== where.auditId
+            ) {
+              return false;
+            }
+            return true;
+          }).length;
         }),
+        findMany: jest
+          .fn()
+          .mockImplementation(async ({ where, take, orderBy }) => {
+            const items = traceStore
+              .filter((item) => {
+                if (!where) return true;
+                if (where.operation && item.operation !== where.operation)
+                  return false;
+                if (where.source && item.source !== where.source) return false;
+                if (
+                  Object.prototype.hasOwnProperty.call(where, 'auditId') &&
+                  item.auditId !== where.auditId
+                ) {
+                  return false;
+                }
+                if (
+                  Object.prototype.hasOwnProperty.call(
+                    where,
+                    'compareOldAudit',
+                  ) &&
+                  item.compareOldAudit !== where.compareOldAudit
+                ) {
+                  return false;
+                }
+                if (
+                  Object.prototype.hasOwnProperty.call(
+                    where,
+                    'compareNewAudit',
+                  ) &&
+                  item.compareNewAudit !== where.compareNewAudit
+                ) {
+                  return false;
+                }
+                return true;
+              })
+              .sort((a, b) => b.id - a.id);
+            if (orderBy?.createdAt === 'desc') {
+              items.sort((a, b) => b.id - a.id);
+            }
+            return typeof take === 'number' ? items.slice(0, take) : items;
+          }),
       },
     };
 
@@ -130,9 +214,7 @@ describe('AiService', () => {
         },
         {
           provide: AuditService,
-          useValue: {
-            compareAudits: jest.fn(),
-          },
+          useValue: auditServiceMock,
         },
         {
           provide: ConfigService,
@@ -149,27 +231,36 @@ describe('AiService', () => {
     service = module.get<AiService>(AiService);
   });
 
+  const mockOpenAiJson = (implementation: RequestOpenAiJsonMock) =>
+    (
+      jest.spyOn(
+        service as unknown as AiServicePrivate,
+        'requestOpenAiJson',
+      ) as unknown as jest.MockedFunction<RequestOpenAiJsonMock>
+    ).mockImplementation(implementation);
+
+  const getCreatedTraceData = (index = 0): TraceStoreItem =>
+    prisma.aiTrace.create.mock.calls[index][0].data;
+
   it('uses OpenAI output when payload is valid through aliases', async () => {
-    jest
-      .spyOn(service as never, 'requestOpenAiJson' as never)
-      .mockImplementation(async (_prompt, _input, attempt) => {
-        attempt.attempted = true;
-        attempt.status = 'success';
-        attempt.responseModel = 'gpt-4o-mini-2024-07-18';
-        return {
-          executive_summary: 'Resumen ejecutivo correcto',
-          technical_summary: 'Resumen tecnico correcto',
-          recommendations: [
-            {
-              title: 'Corregir image-alt',
-              reason: 'Falta texto alternativo',
-              actions: ['Anadir alt descriptivo'],
-              priority: 'high',
-            },
-          ],
-          _model: 'gpt-4o-mini-2024-07-18',
-        };
-      });
+    mockOpenAiJson(async (_prompt, _input, attempt) => {
+      attempt.attempted = true;
+      attempt.status = 'success';
+      attempt.responseModel = 'gpt-4o-mini-2024-07-18';
+      return {
+        executive_summary: 'Resumen ejecutivo correcto',
+        technical_summary: 'Resumen tecnico correcto',
+        recommendations: [
+          {
+            title: 'Corregir image-alt',
+            reason: 'Falta texto alternativo',
+            actions: ['Anadir alt descriptivo'],
+            priority: 'high',
+          },
+        ],
+        _model: 'gpt-4o-mini-2024-07-18',
+      };
+    });
 
     const result = await service.getAuditSummary(1, { forceHeuristic: false });
 
@@ -182,19 +273,17 @@ describe('AiService', () => {
   });
 
   it('falls back to heuristic and records invalid_payload when OpenAI output is incomplete', async () => {
-    jest
-      .spyOn(service as never, 'requestOpenAiJson' as never)
-      .mockImplementation(async (_prompt, _input, attempt) => {
-        attempt.attempted = true;
-        attempt.status = 'success';
-        attempt.responseModel = 'gpt-4o-mini-2024-07-18';
-        return {
-          summary: {
-            executive: 'Solo llega el resumen ejecutivo',
-          },
-          _model: 'gpt-4o-mini-2024-07-18',
-        };
-      });
+    mockOpenAiJson(async (_prompt, _input, attempt) => {
+      attempt.attempted = true;
+      attempt.status = 'success';
+      attempt.responseModel = 'gpt-4o-mini-2024-07-18';
+      return {
+        summary: {
+          executive: 'Solo llega el resumen ejecutivo',
+        },
+        _model: 'gpt-4o-mini-2024-07-18',
+      };
+    });
 
     const result = await service.getAuditSummary(1, { forceHeuristic: false });
 
@@ -204,15 +293,16 @@ describe('AiService', () => {
     expect(result.resolution.reason).toContain('technicalSummary=false');
 
     expect(prisma.aiTrace.create).toHaveBeenCalled();
-    expect(
-      prisma.aiTrace.create.mock.calls[0][0].data.responseMeta.openAiAttempt.status,
-    ).toBe('invalid_payload');
+    const responseMeta = getCreatedTraceData(0).responseMeta as {
+      openAiAttempt: { status: string };
+    };
+    expect(responseMeta.openAiAttempt.status).toBe('invalid_payload');
+    expect(getCreatedTraceData(0).success).toBe(false);
   });
 
   it('reuses an existing assisted audit summary instead of calling OpenAI again', async () => {
-    const requestOpenAiJson = jest
-      .spyOn(service as never, 'requestOpenAiJson' as never)
-      .mockImplementation(async (_prompt, _input, attempt) => {
+    const requestOpenAiJson = mockOpenAiJson(
+      async (_prompt, _input, attempt) => {
         attempt.attempted = true;
         attempt.status = 'success';
         attempt.responseModel = 'gpt-4o-mini-2024-07-18';
@@ -229,7 +319,8 @@ describe('AiService', () => {
           ],
           _model: 'gpt-4o-mini-2024-07-18',
         };
-      });
+      },
+    );
 
     const first = await service.getAuditSummary(1, { forceHeuristic: false });
     const second = await service.getAuditSummary(1, { forceHeuristic: false });
@@ -247,8 +338,12 @@ describe('AiService', () => {
     });
 
     expect(result.rule.type).toBe('passes');
-    expect(result.explanation.summary.toLowerCase()).toContain('validado correctamente');
-    expect(result.explanation.summary.toLowerCase()).not.toContain('corrección');
+    expect(result.explanation.summary.toLowerCase()).toContain(
+      'validado correctamente',
+    );
+    expect(result.explanation.summary.toLowerCase()).not.toContain(
+      'corrección',
+    );
     expect(result.explanation.whyItMatters.toLowerCase()).toContain('preserv');
   });
 
@@ -261,7 +356,167 @@ describe('AiService', () => {
 
     expect(result.rule.type).toBe('incomplete');
     expect(result.rule.occurrences).toBe(2);
-    expect(result.explanation.summary.toLowerCase()).toContain('revisión manual');
-    expect(result.explanation.whyItMatters.toLowerCase()).toContain('no implica ni fallo ni cumplimiento');
+    expect(result.explanation.summary.toLowerCase()).toContain(
+      'revisión manual',
+    );
+    expect(result.explanation.whyItMatters.toLowerCase()).toContain(
+      'no implica ni fallo ni cumplimiento',
+    );
+  });
+
+  it('aggregates trace statistics by operation, source and attempt status', async () => {
+    traceStore.push(
+      {
+        id: 1,
+        operation: 'audit_summary',
+        source: 'heuristic',
+        model: null,
+        latencyMs: 12,
+        createdAt: new Date(),
+        responseMeta: {
+          openAiAttempt: {
+            status: 'not_configured',
+          },
+        },
+      },
+      {
+        id: 2,
+        operation: 'compare_summary',
+        source: 'openai',
+        model: 'gpt-4o-mini',
+        latencyMs: 240,
+        createdAt: new Date(),
+        responseMeta: {
+          openAiAttempt: {
+            status: 'success',
+          },
+        },
+      },
+    );
+
+    const stats = await service.getTraceStats({});
+
+    expect(stats.window.total).toBe(2);
+    expect(stats.usage.byOperation).toEqual({
+      audit_summary: 1,
+      compare_summary: 1,
+    });
+    expect(stats.usage.bySource).toEqual({
+      heuristic: 1,
+      openai: 1,
+    });
+    expect(stats.usage.byModel).toEqual({
+      'gpt-4o-mini': 1,
+    });
+    expect(stats.usage.fallbackRate).toBe(0.5);
+    expect(stats.latency.avgMs).toBe(126);
+    expect(stats.attempts.byStatus).toEqual({
+      not_configured: 1,
+      success: 1,
+    });
+  });
+
+  it('returns the real filtered trace total instead of the limited slice size', async () => {
+    traceStore.push(
+      {
+        id: 1,
+        operation: 'audit_summary',
+        source: 'heuristic',
+        model: null,
+        auditId: 1,
+        latencyMs: 10,
+        success: true,
+        errorMessage: null,
+        createdAt: new Date(),
+      },
+      {
+        id: 2,
+        operation: 'audit_summary',
+        source: 'heuristic',
+        model: null,
+        auditId: 1,
+        latencyMs: 20,
+        success: true,
+        errorMessage: null,
+        createdAt: new Date(),
+      },
+      {
+        id: 3,
+        operation: 'audit_summary',
+        source: 'heuristic',
+        model: null,
+        auditId: 1,
+        latencyMs: 30,
+        success: true,
+        errorMessage: null,
+        createdAt: new Date(),
+      },
+    );
+
+    const result = await service.listTraces({ limit: 2, auditId: 1 });
+
+    expect(result.total).toBe(3);
+    expect(result.items).toHaveLength(2);
+  });
+
+  it('builds comparison summaries from compareAudits and persists the assisted result', async () => {
+    auditServiceMock.compareAudits.mockResolvedValue({
+      audits: {
+        old: {
+          id: 1,
+          url: 'https://example.com/old',
+          timestamp: new Date('2026-04-10T10:00:00.000Z'),
+        },
+        new: {
+          id: 2,
+          url: 'https://example.com/new',
+          timestamp: new Date('2026-04-11T10:00:00.000Z'),
+        },
+      },
+      summary: {
+        totalViolationRulesOld: 3,
+        totalViolationRulesNew: 2,
+        totalOccurrencesOld: 7,
+        totalOccurrencesNew: 4,
+        deltaViolationRules: -1,
+        newViolationRules: 1,
+        resolvedViolationRules: 2,
+        persistentViolationRules: 1,
+      },
+    });
+
+    mockOpenAiJson(async (_prompt, _input, attempt) => {
+      attempt.attempted = true;
+      attempt.status = 'success';
+      attempt.responseModel = 'gpt-4o-mini-2024-07-18';
+      return {
+        executiveSummary: 'Comparativa correcta',
+        technicalSummary:
+          'Hay mejoras netas, pero queda una regla persistente.',
+        recommendations: [
+          {
+            title: 'Cerrar persistentes',
+            reason: 'Todavia queda una regla abierta',
+            actions: ['Resolver la regla persistente', 'Reauditar'],
+            priority: 'medium',
+          },
+        ],
+        _model: 'gpt-4o-mini-2024-07-18',
+      };
+    });
+
+    const result = await service.getComparisonSummary(1, 2, {
+      forceHeuristic: false,
+    });
+
+    expect(auditServiceMock.compareAudits).toHaveBeenCalledWith(1, 2);
+    expect(result.source).toBe('openai');
+    expect(result.executiveSummary).toBe('Comparativa correcta');
+    expect(result.summary.resolvedViolationRules).toBe(2);
+    expect(prisma.aiTrace.create).toHaveBeenCalled();
+    expect(
+      getCreatedTraceData(prisma.aiTrace.create.mock.calls.length - 1)
+        .operation,
+    ).toBe('compare_summary');
   });
 });

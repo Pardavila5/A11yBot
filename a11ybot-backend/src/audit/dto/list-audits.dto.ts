@@ -1,5 +1,13 @@
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, Min, Max } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Min,
+  Max,
+  MaxLength,
+} from 'class-validator';
 
 export class ListAuditsDto {
   @IsOptional()
@@ -18,4 +26,13 @@ export class ListAuditsDto {
   @IsOptional()
   @IsIn(['asc', 'desc'])
   order?: 'asc' | 'desc' = 'desc';
+
+  @IsOptional()
+  @IsIn(['running', 'completed', 'failed'])
+  status?: 'running' | 'completed' | 'failed';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  search?: string;
 }

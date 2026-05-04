@@ -68,7 +68,7 @@ export default function DashboardPage() {
       showToast({ message: 'Auditoría lanzada correctamente', severity: 'success' });
       await loadRecent();
       navigate('/audits');
-    } catch (err: any) {
+    } catch (err: unknown) {
       showToast({ message: formatErrorMessage(err), severity: 'error' });
     } finally {
       setLoading(false);
