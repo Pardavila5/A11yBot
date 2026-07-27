@@ -80,6 +80,12 @@ describe('AuditController', () => {
         timestamp: new Date('2026-04-10T12:00:00.000Z'),
         status: 'completed',
         notes: 'Revisada',
+        rules: [
+          { type: 'violations' },
+          { type: 'violations' },
+          { type: 'passes' },
+          { type: 'incomplete' },
+        ],
       },
     ]);
 
@@ -93,7 +99,7 @@ describe('AuditController', () => {
       skip: 10,
       take: 10,
       where: {},
-      include: { website: true },
+      include: { website: true, rules: { select: { type: true } } },
       orderBy: { timestamp: 'asc' },
     });
     expect(result).toEqual({
@@ -107,6 +113,7 @@ describe('AuditController', () => {
           timestamp: new Date('2026-04-10T12:00:00.000Z'),
           status: 'completed',
           notes: 'Revisada',
+          counts: { violations: 2, passes: 1, incomplete: 1 },
         },
       ],
     });
@@ -138,7 +145,7 @@ describe('AuditController', () => {
       skip: 0,
       take: 5,
       where,
-      include: { website: true },
+      include: { website: true, rules: { select: { type: true } } },
       orderBy: { timestamp: 'desc' },
     });
   });

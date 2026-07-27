@@ -1,0 +1,112 @@
+{
+  "total": 15,
+  "page": 1,
+  "pageSize": 100,
+  "items": [
+    {
+      "id": 1,
+      "website": "https://www.w3.org/WAI/EO/2005/Demo/before/index",
+      "timestamp": "2026-04-13T14:53:10.657Z",
+      "status": "completed",
+      "notes": null
+    },
+    {
+      "id": 2,
+      "website": "https://www.w3.org/WAI/EO/2005/Demo/after/index",
+      "timestamp": "2026-04-13T14:53:21.095Z",
+      "status": "completed",
+      "notes": null
+    },
+    {
+      "id": 3,
+      "website": "https://example.com/",
+      "timestamp": "2026-04-13T16:10:33.199Z",
+      "status": "failed",
+      "notes": "page.goto: net::ERR_CONNECTION_CLOSED at https://example.com/\nCall log:\n\u001b[2m  - navigating to \"https://example.com/\", waiting until \"networkidle\"\u001b[22m\n"
+    },
+    {
+      "id": 4,
+      "website": "https://example.com/",
+      "timestamp": "2026-05-04T19:17:37.359Z",
+      "status": "failed",
+      "notes": "page.goto: net::ERR_CONNECTION_CLOSED at https://example.com/\nCall log:\n\u001b[2m  - navigating to \"https://example.com/\", waiting until \"networkidle\"\u001b[22m\n"
+    },
+    {
+      "id": 5,
+      "website": "https://stussy.com/",
+      "timestamp": "2026-05-04T19:21:13.316Z",
+      "status": "completed",
+      "notes": null
+    },
+    {
+      "id": 6,
+      "website": "https://mobgenfest.com/",
+      "timestamp": "2026-05-04T19:26:30.699Z",
+      "status": "completed",
+      "notes": null
+    },
+    {
+      "id": 7,
+      "website": "https://example.com/",
+      "timestamp": "2026-05-07T13:29:20.074Z",
+      "status": "completed",
+      "notes": null
+    },
+    {
+      "id": 8,
+      "website": "https://example.com/",
+      "timestamp": "2026-05-07T15:11:32.435Z",
+      "status": "completed",
+      "notes": null
+    },
+    {
+      "id": 9,
+      "website": "https://esei.uvigo.es/",
+      "timestamp": "2026-05-07T15:36:11.376Z",
+      "status": "completed",
+      "notes": null
+    },
+    {
+      "id": 10,
+      "website": "https://www.washington.edu/accesscomputing/AU/before.html",
+      "timestamp": "2026-06-09T19:02:19.603Z",
+      "status": "completed",
+      "notes": null
+    },
+    {
+      "id": 11,
+      "website": "https://www.washington.edu/accesscomputing/AU/after.html",
+      "timestamp": "2026-06-09T19:03:43.677Z",
+      "status": "completed",
+      "notes": null
+    },
+    {
+      "id": 12,
+      "website": "https://esei.uvigo.es/",
+      "timestamp": "2026-06-09T19:04:46.791Z",
+      "status": "completed",
+      "notes": null
+    },
+    {
+      "id": 13,
+      "website": "https://instagram.com/",
+      "timestamp": "2026-06-09T19:05:29.159Z",
+      "status": "completed",
+      "notes": null
+    },
+    {
+      "id": 14,
+      "website": "https://www.w3.org/WAI/demos/bad/before/news.html",
+      "timestamp": "2026-06-09T19:22:36.884Z",
+      "status": "completed",
+      "notes": null
+    },
+    {
+      "id": 15,
+      "website": "https://www.w3.org/WAI/demos/bad/after/news.html",
+      "timestamp": "2026-06-09T19:22:54.120Z",
+      "status": "completed",
+      "notes": null
+    }
+  ]
+}

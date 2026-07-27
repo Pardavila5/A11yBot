@@ -17,7 +17,14 @@ A11yBot es un TFG orientado a auditoria automatica de accesibilidad web con evid
 
 ## Arranque rapido
 
-Backend:
+Antes del primer arranque, crea `a11ybot-backend/.env` con al menos:
+
+```bash
+DATABASE_URL="file:./dev.db"
+OPENAI_API_KEY=""
+```
+
+Backend (instalacion y arranque):
 
 ```bash
 cd a11ybot-backend
@@ -26,13 +33,6 @@ npx prisma generate
 npx prisma migrate deploy
 npx playwright install chromium
 npm run start:dev
-```
-
-Antes del primer arranque, crea `a11ybot-backend/.env` con al menos:
-
-```bash
-DATABASE_URL="file:./dev.db"
-OPENAI_API_KEY=""
 ```
 
 Frontend:

@@ -1,0 +1,403 @@
+{
+  "audits": {
+    "old": {
+      "id": 9,
+      "url": "https://esei.uvigo.es/",
+      "timestamp": "2026-05-07T15:36:11.376Z"
+    },
+    "new": {
+      "id": 12,
+      "url": "https://esei.uvigo.es/",
+      "timestamp": "2026-06-09T19:04:46.791Z"
+    }
+  },
+  "summary": {
+    "totalViolationRulesOld": 6,
+    "totalViolationRulesNew": 6,
+    "totalOccurrencesOld": 38,
+    "totalOccurrencesNew": 37,
+    "deltaViolationRules": 0,
+    "newViolationRules": 0,
+    "resolvedViolationRules": 0,
+    "persistentViolationRules": 6
+  },
+  "newViolations": [],
+  "resolvedViolations": [],
+  "persistentViolations": [
+    {
+      "ruleId": "color-contrast",
+      "impact": "serious",
+      "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+      "wcag": [
+        "wcag2aa",
+        "wcag143"
+      ],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 3847,
+          "htmlSnippet": "<div class=\"featured__item__type card-header text-uppercase\">Evento</div>",
+          "target": [
+            ".slick-current.slick-active[data-slick-index=\"0\"] > div > .uvigo-slide__featured__item > .featured__item.card > .featured__item__type.card-header.text-uppercase"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.27 (foreground color: #acacac, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "id": 3848,
+          "htmlSnippet": "<div class=\"featured__item__type card-header text-uppercase\">Evento</div>",
+          "target": [
+            ".slick-active[data-slick-index=\"1\"][aria-hidden=\"false\"] > div > .uvigo-slide__featured__item > .featured__item.card > .featured__item__type.card-header.text-uppercase"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.27 (foreground color: #acacac, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "id": 3849,
+          "htmlSnippet": "<div class=\"featured__item__type card-header text-uppercase\">Evento</div>",
+          "target": [
+            ".slick-active[data-slick-index=\"2\"][aria-hidden=\"false\"] > div > .uvigo-slide__featured__item > .featured__item.card > .featured__item__type.card-header.text-uppercase"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.27 (foreground color: #acacac, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "id": 3850,
+          "htmlSnippet": "<div class=\"featured__item__type card-header text-uppercase\">Novas</div>",
+          "target": [
+            ".slick-active[data-slick-index=\"3\"][aria-hidden=\"false\"] > div > .uvigo-slide__featured__item > .featured__item.card > .featured__item__type.card-header.text-uppercase"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.27 (foreground color: #acacac, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "id": 3851,
+          "htmlSnippet": "<a href=\"https://www.uvigo.gal/aviso-legal\" id=\"CONSTANT_OPEN_URL\" target=\"_blank\" class=\"cli-plugin-main-link\" style=\"margin: 5px; color: rgb(7, 51, 73);\">Máis info</a>",
+          "target": [
+            "#CONSTANT_OPEN_URL"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.02 (foreground color: #073349, background color: #809098, font size: 11.3pt (15px), font weight: normal). Expected contrast ratio of 4.5:1"
+        }
+      ]
+    },
+    {
+      "ruleId": "heading-order",
+      "impact": "moderate",
+      "description": "Ensure the order of headings is semantically correct",
+      "help": "Heading levels should only increase by one",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/heading-order?application=playwright",
+      "wcag": [],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 3852,
+          "htmlSnippet": "<h4 class=\"card-title\"><a href=\"https://esei.uvigo.es/docencia/calendario-academico/\" class=\"card-link\">Calendario Académico</a></h4>",
+          "target": [
+            ".card-group > .card:nth-child(1) > .card-body > .card-title"
+          ],
+          "failureSummary": "Fix any of the following:\n  Heading order invalid"
+        },
+        {
+          "id": 3853,
+          "htmlSnippet": "<h4 class=\"card-title\"><a href=\"/razons-polas-que-estudar-na-esei/\" class=\"card-link\" tabindex=\"0\">10 razóns polas que estudar na ESEI</a></h4>",
+          "target": [
+            ".slick-current.slick-active[data-slick-index=\"0\"] > div > .redonda.card > .card-body > .card-title"
+          ],
+          "failureSummary": "Fix any of the following:\n  Heading order invalid"
+        },
+        {
+          "id": 3854,
+          "htmlSnippet": "<h5 class=\"cli_messagebar_head\">Neste sitio empréganse cookies para mellorar a experiencia de usuario.</h5>",
+          "target": [
+            "h5"
+          ],
+          "failureSummary": "Fix any of the following:\n  Heading order invalid"
+        }
+      ]
+    },
+    {
+      "ruleId": "image-alt",
+      "impact": "critical",
+      "description": "Ensure <img> elements have alternative text or a role of none or presentation",
+      "help": "Images must have alternative text",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/image-alt?application=playwright",
+      "wcag": [
+        "wcag2a",
+        "wcag111"
+      ],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 3855,
+          "htmlSnippet": "<img decoding=\"async\" class=\"card-img-top img-fluid\" src=\"/wp-content/uploads/2019/07/calendar.png\">",
+          "target": [
+            ".card-group > .card:nth-child(1) > a > .img-fluid.card-img-top[decoding=\"async\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 3856,
+          "htmlSnippet": "<img decoding=\"async\" class=\"card-img-top img-fluid\" src=\"/wp-content/uploads/2019/07/horario.png\">",
+          "target": [
+            ".card:nth-child(2) > a > .img-fluid.card-img-top[decoding=\"async\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 3857,
+          "htmlSnippet": "<img decoding=\"async\" class=\"card-img-top img-fluid\" src=\"/wp-content/uploads/2019/07/exam.png\">",
+          "target": [
+            ".card:nth-child(3) > a > .img-fluid.card-img-top[decoding=\"async\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 3858,
+          "htmlSnippet": "<img decoding=\"async\" class=\"card-img-top img-fluid\" src=\"/wp-content/uploads/2019/07/profesorado.png\">",
+          "target": [
+            ".card:nth-child(5) > a > .img-fluid.card-img-top[decoding=\"async\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 3859,
+          "htmlSnippet": "<img decoding=\"async\" class=\"card-img-top img-fluid\" src=\"/wp-content/uploads/2019/10/icono-empleo.png\">",
+          "target": [
+            ".card:nth-child(6) > a > .img-fluid.card-img-top[decoding=\"async\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 3860,
+          "htmlSnippet": "<img decoding=\"async\" class=\"card-img-top img-fluid\" src=\"/wp-content/uploads/2019/08/destacado-razones.jpg\">",
+          "target": [
+            ".slick-current.slick-active[data-slick-index=\"0\"] > div > .redonda.card > a > .img-fluid.card-img-top[decoding=\"async\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 3861,
+          "htmlSnippet": "<img decoding=\"async\" class=\"card-img-top img-fluid\" src=\"/wp-content/uploads/2019/08/destacado-servizos.jpg\">",
+          "target": [
+            ".slick-active[data-slick-index=\"1\"][aria-hidden=\"false\"] > div > .redonda.card > a > .img-fluid.card-img-top[decoding=\"async\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 3862,
+          "htmlSnippet": "<img decoding=\"async\" class=\"card-img-top img-fluid\" src=\"/wp-content/uploads/2019/08/destacado-delegacion.jpg\">",
+          "target": [
+            "a[href$=\"delegacion-de-alumnos/\"] > .img-fluid.card-img-top[decoding=\"async\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 3863,
+          "htmlSnippet": "<img decoding=\"async\" class=\"card-img-top img-fluid\" src=\"/wp-content/uploads/2019/08/destacado-mobilidade.jpg\">",
+          "target": [
+            ".slick-active[data-slick-index=\"3\"][aria-hidden=\"false\"] > div > .redonda.card > a > .img-fluid.card-img-top[decoding=\"async\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        }
+      ]
+    },
+    {
+      "ruleId": "link-in-text-block",
+      "impact": "serious",
+      "description": "Ensure links are distinguished from surrounding text in a way that does not rely on color",
+      "help": "Links must be distinguishable without relying on color",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/link-in-text-block?application=playwright",
+      "wcag": [
+        "wcag2a",
+        "wcag141"
+      ],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 3864,
+          "htmlSnippet": "<a class=\"excerpt_more\" href=\"https://esei.uvigo.es/2026/05/campamento-tecnoloxico-de-veran-do-22-ao-26-de-xuno-na-esei/\" tabindex=\"0\">Continuar</a>",
+          "target": [
+            ".slick-active[data-slick-index=\"3\"][aria-hidden=\"false\"] > div > .uvigo-slide__featured__item > .featured__item.card > .card-body > p > .excerpt_more"
+          ],
+          "failureSummary": "Fix any of the following:\n  The link has insufficient color contrast of 1.57:1 with the surrounding text. (Minimum contrast is 3:1, link text: #073349, surrounding text: #000000)\n  The link has no styling (such as underline) to distinguish it from the surrounding text"
+        },
+        {
+          "id": 3865,
+          "htmlSnippet": "<a class=\"excerpt_more\" href=\"https://esei.uvigo.es/2026/03/30216/\">Continuar</a>",
+          "target": [
+            ".col-lg-3.col-md-6:nth-child(1) > .featured__item--noback.item_announcement.mb-8 > .card-body > p > .excerpt_more"
+          ],
+          "failureSummary": "Fix any of the following:\n  The link has insufficient color contrast of 1.57:1 with the surrounding text. (Minimum contrast is 3:1, link text: #073349, surrounding text: #000000)\n  The link has no styling (such as underline) to distinguish it from the surrounding text"
+        },
+        {
+          "id": 3866,
+          "htmlSnippet": "<a class=\"excerpt_more\" href=\"https://esei.uvigo.es/2026/03/alumnado-seleccionado-erasmus-2026-2027-na-esei/\">Continuar</a>",
+          "target": [
+            ".col-lg-3.col-md-6:nth-child(2) > .featured__item--noback.item_announcement.mb-8 > .card-body > p > .excerpt_more"
+          ],
+          "failureSummary": "Fix any of the following:\n  The link has insufficient color contrast of 1.57:1 with the surrounding text. (Minimum contrast is 3:1, link text: #073349, surrounding text: #000000)\n  The link has no styling (such as underline) to distinguish it from the surrounding text"
+        },
+        {
+          "id": 3867,
+          "htmlSnippet": "<a class=\"excerpt_more\" href=\"https://esei.uvigo.es/2026/01/suspension-da-actividade-docente-no-campus-de-ourense-o-23-1/\">Continuar</a>",
+          "target": [
+            ".col-lg-3.col-md-6:nth-child(3) > .featured__item--noback.item_announcement.mb-8 > .card-body > p > .excerpt_more"
+          ],
+          "failureSummary": "Fix any of the following:\n  The link has insufficient color contrast of 1.57:1 with the surrounding text. (Minimum contrast is 3:1, link text: #073349, surrounding text: #000000)\n  The link has no styling (such as underline) to distinguish it from the surrounding text"
+        },
+        {
+          "id": 3868,
+          "htmlSnippet": "<a class=\"excerpt_more\" href=\"https://esei.uvigo.es/2025/11/reunion-para-o-estudantado-en-relacion-coa-convocatoria-erasmus-2026-27/\">Continuar</a>",
+          "target": [
+            ".col-lg-3.col-md-6:nth-child(4) > .featured__item--noback.item_announcement.mb-8 > .card-body > p > .excerpt_more"
+          ],
+          "failureSummary": "Fix any of the following:\n  The link has insufficient color contrast of 1.57:1 with the surrounding text. (Minimum contrast is 3:1, link text: #073349, surrounding text: #000000)\n  The link has no styling (such as underline) to distinguish it from the surrounding text"
+        }
+      ]
+    },
+    {
+      "ruleId": "link-name",
+      "impact": "serious",
+      "description": "Ensure links have discernible text",
+      "help": "Links must have discernible text",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/link-name?application=playwright",
+      "wcag": [
+        "wcag2a",
+        "wcag244",
+        "wcag412"
+      ],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 3869,
+          "htmlSnippet": "<a href=\"https://esei.uvigo.es/docencia/calendario-academico/\"><img decoding=\"async\" class=\"card-img-top img-fluid\" src=\"/wp-content/uploads/2019/07/calendar.png\"></a>",
+          "target": [
+            ".card-group > .card:nth-child(1) > a"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        },
+        {
+          "id": 3870,
+          "htmlSnippet": "<a href=\"https://esei.uvigo.es/docencia/horarios/\"><img decoding=\"async\" class=\"card-img-top img-fluid\" src=\"/wp-content/uploads/2019/07/horario.png\"></a>",
+          "target": [
+            ".card:nth-child(2) > a"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        },
+        {
+          "id": 3871,
+          "htmlSnippet": "<a href=\"https://esei.uvigo.es/docencia/exames/\"><img decoding=\"async\" class=\"card-img-top img-fluid\" src=\"/wp-content/uploads/2019/07/exam.png\"></a>",
+          "target": [
+            ".card:nth-child(3) > a"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        },
+        {
+          "id": 3872,
+          "htmlSnippet": "<a href=\"https://esei.uvigo.es/a-esei/formularios/\"><img decoding=\"async\" class=\"card-img-top img-fluid alignnone\" src=\"/wp-content/uploads/2019/07/forms.png\" alt=\"\" width=\"100\" height=\"100\"></a>",
+          "target": [
+            ".card:nth-child(4) > a"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        },
+        {
+          "id": 3873,
+          "htmlSnippet": "<a href=\"https://esei.uvigo.es/docencia/profesorado/\"><img decoding=\"async\" class=\"card-img-top img-fluid\" src=\"/wp-content/uploads/2019/07/profesorado.png\"></a>",
+          "target": [
+            ".card:nth-child(5) > a"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        },
+        {
+          "id": 3874,
+          "htmlSnippet": "<a href=\"https://esei.uvigo.es/id-e-empresas/ofertas-de-emprego/\"><img decoding=\"async\" class=\"card-img-top img-fluid\" src=\"/wp-content/uploads/2019/10/icono-empleo.png\"></a>",
+          "target": [
+            ".card:nth-child(6) > a"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        },
+        {
+          "id": 3875,
+          "htmlSnippet": "<a href=\"https://esei.uvigo.es/evento/reunions-informativas-sobre-masteres-itinerarios-e-optatividade-para-o-curso-2026-2027/\" style=\"\" tabindex=\"0\">",
+          "target": [
+            ".slick-current.slick-active[data-slick-index=\"0\"] > div > .uvigo-slide__featured__item > .featured__item.card > .entry-thumbnail > a"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        },
+        {
+          "id": 3876,
+          "htmlSnippet": "<a href=\"https://esei.uvigo.es/evento/xornada-de-portas-abertas-na-esei-3/\" style=\"\" tabindex=\"0\">",
+          "target": [
+            ".slick-active[data-slick-index=\"1\"][aria-hidden=\"false\"] > div > .uvigo-slide__featured__item > .featured__item.card > .entry-thumbnail > a"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        },
+        {
+          "id": 3877,
+          "htmlSnippet": "<a href=\"https://esei.uvigo.es/evento/conferencia-sobre-o-novo-programa-artemis/\" style=\"\" tabindex=\"0\">",
+          "target": [
+            ".slick-active[data-slick-index=\"2\"][aria-hidden=\"false\"] > div > .uvigo-slide__featured__item > .featured__item.card > .entry-thumbnail > a"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        },
+        {
+          "id": 3878,
+          "htmlSnippet": "<a href=\"https://esei.uvigo.es/2026/05/campamento-tecnoloxico-de-veran-do-22-ao-26-de-xuno-na-esei/\" style=\"\" tabindex=\"0\">",
+          "target": [
+            ".slick-active[data-slick-index=\"3\"][aria-hidden=\"false\"] > div > .uvigo-slide__featured__item > .featured__item.card > .entry-thumbnail > a"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        },
+        {
+          "id": 3879,
+          "htmlSnippet": "<a href=\"/razons-polas-que-estudar-na-esei/\" tabindex=\"0\"><img decoding=\"async\" class=\"card-img-top img-fluid\" src=\"/wp-content/uploads/2019/08/destacado-razones.jpg\"></a>",
+          "target": [
+            ".slick-current.slick-active[data-slick-index=\"0\"] > div > .redonda.card > a"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        },
+        {
+          "id": 3880,
+          "htmlSnippet": "<a href=\"/a-esei/recursos-materiais-e-servizos/\" tabindex=\"0\"><img decoding=\"async\" class=\"card-img-top img-fluid\" src=\"/wp-content/uploads/2019/08/destacado-servizos.jpg\"></a>",
+          "target": [
+            ".slick-active[data-slick-index=\"1\"][aria-hidden=\"false\"] > div > .redonda.card > a"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        },
+        {
+          "id": 3881,
+          "htmlSnippet": "<a href=\"/a-esei/delegacion-de-alumnos/\" tabindex=\"0\"><img decoding=\"async\" class=\"card-img-top img-fluid\" src=\"/wp-content/uploads/2019/08/destacado-delegacion.jpg\"></a>",
+          "target": [
+            ".redonda.card > a[href$=\"delegacion-de-alumnos/\"]"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        },
+        {
+          "id": 3882,
+          "htmlSnippet": "<a href=\"/docencia/programas-de-mobilidade/\" tabindex=\"0\"><img decoding=\"async\" class=\"card-img-top img-fluid\" src=\"/wp-content/uploads/2019/08/destacado-mobilidade.jpg\"></a>",
+          "target": [
+            ".slick-active[data-slick-index=\"3\"][aria-hidden=\"false\"] > div > .redonda.card > a"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        }
+      ]
+    },
+    {
+      "ruleId": "region",
+      "impact": "moderate",
+      "description": "Ensure all page content is contained by landmarks",
+      "help": "All page content should be contained by landmarks",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/region?application=playwright",
+      "wcag": [],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 3883,
+          "htmlSnippet": "<div id=\"cookie-law-info-bar\" data-nosnippet=\"true\" style=\"background-color: rgb(128, 144, 152); color: rgb(0, 0, 0); font-family: inherit; bottom: 0px; position: fixed; display: block;\">",
+          "target": [
+            "#cookie-law-info-bar"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        }
+      ]
+    }
+  ]
+}

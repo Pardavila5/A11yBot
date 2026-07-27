@@ -1,0 +1,591 @@
+{
+  "audits": {
+    "old": {
+      "id": 1,
+      "url": "https://www.w3.org/WAI/EO/2005/Demo/before/index",
+      "timestamp": "2026-04-13T14:53:10.657Z"
+    },
+    "new": {
+      "id": 2,
+      "url": "https://www.w3.org/WAI/EO/2005/Demo/after/index",
+      "timestamp": "2026-04-13T14:53:21.095Z"
+    }
+  },
+  "summary": {
+    "totalViolationRulesOld": 7,
+    "totalViolationRulesNew": 2,
+    "totalOccurrencesOld": 52,
+    "totalOccurrencesNew": 15,
+    "deltaViolationRules": -5,
+    "newViolationRules": 0,
+    "resolvedViolationRules": 5,
+    "persistentViolationRules": 2
+  },
+  "newViolations": [],
+  "resolvedViolations": [
+    {
+      "ruleId": "html-has-lang",
+      "impact": "serious",
+      "description": "Ensure every HTML document has a lang attribute",
+      "help": "<html> element must have a lang attribute",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/html-has-lang?application=playwright",
+      "wcag": [
+        "wcag2a",
+        "wcag311"
+      ],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 1,
+          "htmlSnippet": "<html>",
+          "target": [
+            "html"
+          ],
+          "failureSummary": "Fix any of the following:\n  The <html> element does not have a lang attribute"
+        }
+      ]
+    },
+    {
+      "ruleId": "image-alt",
+      "impact": "critical",
+      "description": "Ensure <img> elements have alternative text or a role of none or presentation",
+      "help": "Images must have alternative text",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/image-alt?application=playwright",
+      "wcag": [
+        "wcag2a",
+        "wcag111"
+      ],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 2,
+          "htmlSnippet": "<img src=\"pix/border_left_top.gif\" width=\"10px\" height=\"10px\">",
+          "target": [
+            "img[src$=\"border_left_top.gif\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 3,
+          "htmlSnippet": "<img src=\"pix/border_top.gif\" height=\"10px\">",
+          "target": [
+            "img[src$=\"border_top.gif\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 4,
+          "htmlSnippet": "<img src=\"pix/border_right_top.gif\" width=\"10px\" height=\"10px\">",
+          "target": [
+            "img[src$=\"border_right_top.gif\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 5,
+          "htmlSnippet": "<img src=\"pix/border_left.gif\" width=\"10px\">",
+          "target": [
+            "img[src$=\"border_left.gif\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 6,
+          "htmlSnippet": "<img src=\"pix/top_logo.gif\" width=\"443px\" height=\"86px\">",
+          "target": [
+            "img[src$=\"top_logo.gif\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 7,
+          "htmlSnippet": "<img src=\"pix/top_logo_next_end.gif\" width=\"24px\" height=\"86px\">",
+          "target": [
+            "img[src$=\"top_logo_next_end.gif\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 8,
+          "htmlSnippet": "<img src=\"pix/top_weather.gif\" width=\"128px\" height=\"86px\">",
+          "target": [
+            "img[src$=\"top_weather.gif\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 9,
+          "htmlSnippet": "<img src=\"pix/top_logo_next_start.gif\" width=\"22px\" height=\"86px\">",
+          "target": [
+            "img[src$=\"top_logo_next_start.gif\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 10,
+          "htmlSnippet": "<img src=\"pix/mark.gif\" width=\"158px\" height=\"7px\">",
+          "target": [
+            "img[src$=\"mark.gif\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 11,
+          "htmlSnippet": "<img src=\"pix/marker2_w.gif\" width=\"78px\" height=\"1px\">",
+          "target": [
+            "td[colspan=\"5\"][background=\"pix/marker2_w.gif\"][width=\"780px\"] > img[src$=\"marker2_w.gif\"][width=\"78px\"][height=\"1px\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 12,
+          "htmlSnippet": "<img src=\"pix/marker2_w.gif\" width=\"78px\" height=\"1px\">",
+          "target": [
+            "td[width=\"155px\"][background=\"pix/marker2_w.gif\"] > img[src$=\"marker2_w.gif\"][width=\"78px\"][height=\"1px\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 13,
+          "htmlSnippet": "<img src=\"pix/marker2_t.gif\" width=\"1\" height=\"30px\">",
+          "target": [
+            "img[width=\"1\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 14,
+          "htmlSnippet": "<img src=\"pix/nav_home.gif\" width=\"154px\" height=\"34px\" border=\"0px\" onmouseover=\"this.src='pix/nav_home2.gif'\" onmouseout=\"this.src='pix/nav_home.gif'\">",
+          "target": [
+            "img[src$=\"nav_home.gif\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 15,
+          "htmlSnippet": "<img src=\"pix/marker2_w.gif\" width=\"78px\" height=\"1px\">",
+          "target": [
+            "tr[height=\"1px\"]:nth-child(3) > td[background=\"pix/marker2_w.gif\"][width=\"154px\"] > img[src$=\"marker2_w.gif\"][width=\"78px\"][height=\"1px\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 16,
+          "htmlSnippet": "<img src=\"pix/nav_news.gif\" width=\"154px\" height=\"34px\" border=\"0px\" onmouseover=\"this.src='pix/nav_news2.gif'\" onmouseout=\"this.src='pix/nav_news.gif'\">",
+          "target": [
+            "img[src$=\"nav_news.gif\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 17,
+          "htmlSnippet": "<img src=\"pix/marker2_w.gif\" width=\"78px\" height=\"1px\">",
+          "target": [
+            "tr[height=\"1px\"]:nth-child(5) > td[background=\"pix/marker2_w.gif\"][width=\"154px\"] > img[src$=\"marker2_w.gif\"][width=\"78px\"][height=\"1px\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 18,
+          "htmlSnippet": "<img src=\"pix/nav_facts.gif\" width=\"154px\" height=\"34px\" border=\"0px\" onmouseover=\"this.src='pix/nav_facts2.gif'\" onmouseout=\"this.src='pix/nav_facts.gif'\">",
+          "target": [
+            "img[src$=\"nav_facts.gif\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 19,
+          "htmlSnippet": "<img src=\"pix/marker2_w.gif\" width=\"78px\" height=\"1px\">",
+          "target": [
+            "tr[height=\"1px\"]:nth-child(7) > td[background=\"pix/marker2_w.gif\"][width=\"154px\"] > img[src$=\"marker2_w.gif\"][width=\"78px\"][height=\"1px\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 20,
+          "htmlSnippet": "<img src=\"pix/nav_survey.gif\" width=\"154px\" height=\"34px\" border=\"0px\" onmouseover=\"this.src='pix/nav_survey2.gif'\" onmouseout=\"this.src='pix/nav_survey.gif'\">",
+          "target": [
+            "img[src$=\"nav_survey.gif\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 21,
+          "htmlSnippet": "<img src=\"pix/marker2_w.gif\" width=\"78px\" height=\"1px\">",
+          "target": [
+            "tr[height=\"1px\"]:nth-child(9) > td[background=\"pix/marker2_w.gif\"][width=\"154px\"] > img[src$=\"marker2_w.gif\"][width=\"78px\"][height=\"1px\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 22,
+          "htmlSnippet": "<img src=\"pix/blank_5x5.gif\" width=\"20px\" height=\"5px\">",
+          "target": [
+            "td[width=\"20px\"]:nth-child(2) > img[src$=\"blank_5x5.gif\"][height=\"5px\"][width=\"20px\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 23,
+          "htmlSnippet": "<img src=\"pix/headline_middle.gif\" width=\"23\" height=\"24\" align=\"absmiddle\">",
+          "target": [
+            ".newsheadline:nth-child(1) > img[src$=\"headline_middle.gif\"][width=\"23\"][height=\"24\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 24,
+          "htmlSnippet": "<img src=\"pix/headline_middle.gif\" width=\"23\" height=\"24\" align=\"absmiddle\">",
+          "target": [
+            ".newsheadline:nth-child(2) > img[src$=\"headline_middle.gif\"][width=\"23\"][height=\"24\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 25,
+          "htmlSnippet": "<img src=\"pix/headline_middle.gif\" width=\"23\" height=\"24\" align=\"absmiddle\">",
+          "target": [
+            ".newsheadline:nth-child(3) > img[src$=\"headline_middle.gif\"][width=\"23\"][height=\"24\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 26,
+          "htmlSnippet": "<img src=\"pix/blank_5x5.gif\" width=\"20px\" height=\"5px\">",
+          "target": [
+            "td[width=\"20px\"]:nth-child(4) > img[src$=\"blank_5x5.gif\"][height=\"5px\"][width=\"20px\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 27,
+          "htmlSnippet": "<img src=\"pix/marker2_t.gif\" width=\"1px\" height=\"30px\">",
+          "target": [
+            "img[src$=\"marker2_t.gif\"][height=\"30px\"][width=\"1px\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 28,
+          "htmlSnippet": "<img src=\"pix/marker2_w.gif\" width=\"78px\" height=\"1px\">",
+          "target": [
+            "td[width=\"151px\"][background=\"pix/marker2_w.gif\"] > img[src$=\"marker2_w.gif\"][width=\"78px\"][height=\"1px\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 29,
+          "htmlSnippet": "<img src=\"pix/teaser_right1.jpg\" width=\"150px\" height=\"106px\">",
+          "target": [
+            "img[src$=\"teaser_right1.jpg\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 30,
+          "htmlSnippet": "<img src=\"pix/marker2_w.gif\" width=\"78px\" height=\"1px\">",
+          "target": [
+            "td[background=\"pix/marker2_w.gif\"][width=\"150px\"] > img[src$=\"marker2_w.gif\"][width=\"78px\"][height=\"1px\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 31,
+          "htmlSnippet": "<img src=\"pix/teaser_right2.jpg\" width=\"150px\" height=\"154px\">",
+          "target": [
+            "img[src$=\"teaser_right2.jpg\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 32,
+          "htmlSnippet": "<img src=\"pix/border_right.gif\" width=\"10px\">",
+          "target": [
+            "img[src$=\"border_right.gif\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 33,
+          "htmlSnippet": "<img src=\"pix/border_bottom_left.gif\" width=\"10px\" height=\"10px\">",
+          "target": [
+            "img[src$=\"border_bottom_left.gif\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 34,
+          "htmlSnippet": "<img src=\"pix/border_bottom.gif\" height=\"10px\">",
+          "target": [
+            "img[src$=\"border_bottom.gif\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 35,
+          "htmlSnippet": "<img src=\"pix/border_bottom_right.gif\" width=\"10px\" height=\"10px\">",
+          "target": [
+            "img[src$=\"border_bottom_right.gif\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        }
+      ]
+    },
+    {
+      "ruleId": "link-name",
+      "impact": "serious",
+      "description": "Ensure links have discernible text",
+      "help": "Links must have discernible text",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/link-name?application=playwright",
+      "wcag": [
+        "wcag2a",
+        "wcag244",
+        "wcag412"
+      ],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 37,
+          "htmlSnippet": "<a href=\"javascript:location.href='index';\" onfocus=\"blur();\"><img src=\"pix/nav_home.gif\" width=\"154px\" height=\"34px\" border=\"0px\" onmouseover=\"this.src='pix/nav_home2.gif'\" onmouseout=\"this.src='pix/nav_home.gif'\"></a>",
+          "target": [
+            "tr[height=\"34px\"]:nth-child(2) > td[width=\"154px\"] > a[onfocus=\"blur();\"]"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        },
+        {
+          "id": 38,
+          "htmlSnippet": "<a href=\"javascript:location.href='info';\" onfocus=\"blur();\"><img src=\"pix/nav_news.gif\" width=\"154px\" height=\"34px\" border=\"0px\" onmouseover=\"this.src='pix/nav_news2.gif'\" onmouseout=\"this.src='pix/nav_news.gif'\"></a>",
+          "target": [
+            "tr[height=\"34px\"]:nth-child(4) > td[width=\"154px\"] > a[onfocus=\"blur();\"]"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        },
+        {
+          "id": 39,
+          "htmlSnippet": "<a href=\"javascript:location.href='data';\" onfocus=\"blur();\"><img src=\"pix/nav_facts.gif\" width=\"154px\" height=\"34px\" border=\"0px\" onmouseover=\"this.src='pix/nav_facts2.gif'\" onmouseout=\"this.src='pix/nav_facts.gif'\"></a>",
+          "target": [
+            "tr[height=\"34px\"]:nth-child(6) > td[width=\"154px\"] > a[onfocus=\"blur();\"]"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        },
+        {
+          "id": 40,
+          "htmlSnippet": "<a href=\"javascript:location.href='form';\" onfocus=\"blur();\"><img src=\"pix/nav_survey.gif\" width=\"154px\" height=\"34px\" border=\"0px\" onmouseover=\"this.src='pix/nav_survey2.gif'\" onmouseout=\"this.src='pix/nav_survey.gif'\"></a>",
+          "target": [
+            "tr[height=\"34px\"]:nth-child(8) > td[width=\"154px\"] > a[onfocus=\"blur();\"]"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        },
+        {
+          "id": 41,
+          "htmlSnippet": "<a href=\"info\" onfocus=\"blur();\"><img src=\"pix/morearrow.gif\" width=\"48\" height=\"10\" alt=\"\" border=\"0\" onmouseover=\"this.src='pix/morearrow_a.gif'\" onmouseout=\"this.src='pix/morearrow.gif'\" style=\"vertical-align: bottom\"></a>",
+          "target": [
+            ".story:nth-child(1) > span > a[href$=\"info\"][onfocus=\"blur();\"]"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        },
+        {
+          "id": 42,
+          "htmlSnippet": "<a href=\"info\" onfocus=\"blur();\"><img src=\"pix/morearrow.gif\" width=\"48\" height=\"10\" alt=\"\" border=\"0\" onmouseover=\"this.src='pix/morearrow_a.gif'\" onmouseout=\"this.src='pix/morearrow.gif'\" style=\"vertical-align: bottom\"></a>",
+          "target": [
+            ".story:nth-child(2) > span > a[href$=\"info\"][onfocus=\"blur();\"]"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        },
+        {
+          "id": 43,
+          "htmlSnippet": "<a href=\"info\" onfocus=\"blur();\"><img src=\"pix/morearrow.gif\" width=\"48\" height=\"10\" alt=\"\" border=\"0\" onmouseover=\"this.src='pix/morearrow_a.gif'\" onmouseout=\"this.src='pix/morearrow.gif'\" style=\"vertical-align: bottom\"></a>",
+          "target": [
+            ".story:nth-child(3) > span > a[href$=\"info\"][onfocus=\"blur();\"]"
+          ],
+          "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+        }
+      ]
+    },
+    {
+      "ruleId": "page-has-heading-one",
+      "impact": "moderate",
+      "description": "Ensure that the page, or at least one of its frames contains a level-one heading",
+      "help": "Page should contain a level-one heading",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/page-has-heading-one?application=playwright",
+      "wcag": [],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 44,
+          "htmlSnippet": "<html>",
+          "target": [
+            "html"
+          ],
+          "failureSummary": "Fix all of the following:\n  Page must have a level-one heading"
+        }
+      ]
+    },
+    {
+      "ruleId": "select-name",
+      "impact": "critical",
+      "description": "Ensure select element has an accessible name",
+      "help": "Select element must have an accessible name",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/select-name?application=playwright",
+      "wcag": [
+        "wcag2a",
+        "wcag412"
+      ],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 52,
+          "htmlSnippet": "<select onchange=\"location.href = this.value;\">\n        <option selected=\"\">QUICKMENU --&gt;\n        </option><option value=\"index\">Home\n        </option><option value=\"info\">News\n        </option><option value=\"data\">Tickets\n        </option><option value=\"form\">Survey\n      </option></select>",
+          "target": [
+            "select"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        }
+      ]
+    }
+  ],
+  "persistentViolations": [
+    {
+      "ruleId": "landmark-one-main",
+      "impact": "moderate",
+      "description": "Ensure the document has a main landmark",
+      "help": "Document should have one main landmark",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/landmark-one-main?application=playwright",
+      "wcag": [],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 529,
+          "htmlSnippet": "<html lang=\"en\">",
+          "target": [
+            "html"
+          ],
+          "failureSummary": "Fix all of the following:\n  Document does not have a main landmark"
+        }
+      ]
+    },
+    {
+      "ruleId": "region",
+      "impact": "moderate",
+      "description": "Ensure all page content is contained by landmarks",
+      "help": "All page content should be contained by landmarks",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/region?application=playwright",
+      "wcag": [],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 530,
+          "htmlSnippet": "<p class=\"highlight-version\"><strong>This is an outdated draft. The latest version is available at <a href=\"https://www.w3.org/WAI/demos/bad/\">http://www.w3.org/WAI/demos/bad/</a>.</strong></p>",
+          "target": [
+            ".highlight-version"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 531,
+          "htmlSnippet": "<p>",
+          "target": [
+            "#warning > p:nth-child(2)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 532,
+          "htmlSnippet": "<p class=\"skip\"><a name=\"startcontent\" id=\"startcontent\">In-page navigation</a></p>",
+          "target": [
+            "#border_c > .skip:nth-child(1)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 533,
+          "htmlSnippet": "<ul class=\"skip\">\n      <li><a href=\"#content\" accesskey=\"1\">Start of content (ALT-1)</a></li>\n      <li><a href=\"#footerdemo\" accesskey=\"8\">Skip to copyright notice (ALT-8)</a></li>\n    </ul>",
+          "target": [
+            ".skip:nth-child(2)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 534,
+          "htmlSnippet": "<img src=\"pix/toplogo.gif\" alt=\"Citylights: your access to the city.\">",
+          "target": [
+            "img[src$=\"toplogo.gif\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 535,
+          "htmlSnippet": "<img src=\"pix/weather.gif\" alt=\"Sunny Spells\">",
+          "target": [
+            "img[src$=\"weather.gif\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 536,
+          "htmlSnippet": "<label for=\"qkmenu\" id=\"qklabel\">Explore Site by Topic:</label>",
+          "target": [
+            "#qklabel"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 537,
+          "htmlSnippet": "<select name=\"qkmenu\" id=\"qkmenu\">\n          <option>Quick Menu</option>\n          <option value=\"info\">News</option>\n          <option value=\"data\">Tickets</option>\n          <option value=\"form\">Survey</option>\n      </select>",
+          "target": [
+            "#qkmenu"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 538,
+          "htmlSnippet": "<div id=\"info\">\n      <div class=\"left\"><strong>Traffic: </strong><p>Construction work on Main Road</p></div>\n      <div class=\"right\"><strong>Today: </strong><p>Friday 27 January 2006, Sunny Spells, 23ºC</p></div>\n    </div>",
+          "target": [
+            "#info"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 539,
+          "htmlSnippet": "<div id=\"main\">",
+          "target": [
+            "#main"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 540,
+          "htmlSnippet": "<div id=\"footerdemo\">",
+          "target": [
+            "#footerdemo"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 541,
+          "htmlSnippet": "<p><strong>Version:</strong> DRAFT 8 August, 2006. [see <a href=\"../changelog\">change log</a>]</p>",
+          "target": [
+            "#footer > p:nth-child(2)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 542,
+          "htmlSnippet": "<p><strong>Note: </strong>This page is part of a Web accessibility demonstration described in <a href=\"../Overview\">About the Demo</a>. The information provided on this page is not real and is only intended to serve the demonstration purposes.</p>",
+          "target": [
+            "#footer > p:nth-child(3)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 543,
+          "htmlSnippet": "<p>",
+          "target": [
+            "#footer > p:nth-child(4)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        }
+      ]
+    }
+  ]
+}

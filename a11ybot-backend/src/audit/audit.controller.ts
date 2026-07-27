@@ -26,9 +26,10 @@ type AuditListRecord = {
   timestamp: Date;
   status: string | null;
   notes: string | null;
+  rules?: { type: string }[];
 };
 
-type AuditDetailRecord = AuditListRecord & {
+type AuditDetailRecord = Omit<AuditListRecord, 'rules'> & {
   rawJson: unknown;
   rules: Array<{
     id: number;
@@ -75,6 +76,7 @@ export class AuditController {
       where,
       include: {
         website: true,
+        rules: { select: { type: true } },
       },
       orderBy: { timestamp: order },
     });
@@ -197,12 +199,19 @@ export class AuditController {
   }
 
   private mapListItem(audit: AuditListRecord) {
+    const counts = { violations: 0, passes: 0, incomplete: 0 };
+    for (const rule of audit.rules ?? []) {
+      if (rule.type === 'violations') counts.violations += 1;
+      else if (rule.type === 'passes') counts.passes += 1;
+      else if (rule.type === 'incomplete') counts.incomplete += 1;
+    }
     return {
       id: audit.id,
       website: audit.website.url,
       timestamp: audit.timestamp,
       status: audit.status ?? null,
       notes: audit.notes ?? null,
+      counts,
     };
   }
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 import { createAudit, listAudits } from '../api';
 import { AuditListItem } from '../types';
 import { formatDate, formatErrorMessage } from '../lib/format';
@@ -124,8 +125,22 @@ export default function DashboardPage() {
                 disabled={loading}
               />
               <Tooltip title="Lanzar nueva auditoría">
-                <span>
-                  <Button type="submit" variant="contained" disabled={loading}>
+                <span style={{ display: 'flex' }}>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    color="primary"
+                    size="large"
+                    disabled={loading}
+                    startIcon={<TravelExploreIcon />}
+                    sx={{
+                      fontWeight: 800,
+                      px: 3,
+                      minWidth: { sm: 180 },
+                      width: { xs: '100%', sm: 'auto' },
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
                     {auditing ? 'Auditando…' : 'Auditar'}
                   </Button>
                 </span>

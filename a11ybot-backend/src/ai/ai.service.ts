@@ -1740,6 +1740,7 @@ export class AiService implements OnModuleInit {
     );
   }
 
+
   private getBaseUrl(): string {
     return (
       this.config.get<string>('OPENAI_BASE_URL') ?? 'https://api.openai.com/v1'

@@ -17,10 +17,11 @@ import AiAbComparisonCard from '../ui/AiAbComparisonCard';
 import {
   aiResolutionStatusLabel,
   aiSourceLabel,
-  impactChipColor,
   impactLabel,
   priorityChipColor,
   priorityLabel,
+  severityChipSx,
+  wcagTagInfo,
 } from '../ui/aiSummaryPresentation';
 import { useToast } from '../ui/ToastProvider';
 import {
@@ -40,6 +41,7 @@ import {
 } from '@mui/material';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
 type CompareIds = { old?: number; new?: number };
 
@@ -74,17 +76,22 @@ function CompareList({ title, items }: { title: string; items: CompareResult['ne
                 <Chip
                   size="small"
                   label={impactLabel(v.impact)}
-                  color={impactChipColor(v.impact)}
-                  variant={v.impact ? 'filled' : 'outlined'}
+                  variant="filled"
+                  sx={{ ...severityChipSx(v.impact), fontWeight: 700 }}
                 />
               </Stack>
               <Typography variant="body2" color="text.secondary">
                 {v.description}
               </Typography>
               <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
-                {v.wcag.map((t) => (
-                  <Chip key={t} size="small" label={t} variant="outlined" />
-                ))}
+                {v.wcag.map((t) => {
+                  const info = wcagTagInfo(t);
+                  return (
+                    <Tooltip key={t} title={info.title}>
+                      <Chip size="small" label={info.label} variant="outlined" />
+                    </Tooltip>
+                  );
+                })}
               </Stack>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
                 Ocurrencias: {v.occurrences.length}
@@ -470,11 +477,41 @@ export default function ComparePage() {
                   #{compareResult.audits.old.id} → #{compareResult.audits.new.id}
                 </Typography>
               </Stack>
+              <Stack spacing={0.25} sx={{ mt: 0.5 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
+                  Old: {compareResult.audits.old.url}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
+                  New: {compareResult.audits.new.url}
+                </Typography>
+              </Stack>
+              {compareResult.audits.old.url !== compareResult.audits.new.url && (
+                <Chip
+                  size="small"
+                  color="warning"
+                  variant="filled"
+                  icon={<WarningAmberIcon />}
+                  label="Atención: comparas páginas distintas (mismo dominio, distinta ruta)"
+                  sx={{
+                    mt: 1,
+                    fontWeight: 700,
+                    height: 'auto',
+                    '& .MuiChip-label': { whiteSpace: 'normal', py: 0.5 },
+                  }}
+                />
+              )}
               <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
-                <Chip label={`Δ reglas: ${compareResult.summary.deltaViolationRules}`} />
-                <Chip label={`Nuevas: ${compareResult.summary.newViolationRules}`} />
-                <Chip label={`Resueltas: ${compareResult.summary.resolvedViolationRules}`} />
-                <Chip label={`Persistentes: ${compareResult.summary.persistentViolationRules}`} />
+                <Chip
+                  sx={{ fontWeight: 700 }}
+                  label={`Reglas con incidencias: ${compareResult.summary.totalViolationRulesOld} → ${
+                    compareResult.summary.totalViolationRulesNew
+                  } (${compareResult.summary.deltaViolationRules > 0 ? '+' : ''}${
+                    compareResult.summary.deltaViolationRules
+                  })`}
+                />
+                <Chip color="error" variant="filled" label={`Nuevas: ${compareResult.summary.newViolationRules}`} />
+                <Chip color="success" variant="filled" label={`Resueltas: ${compareResult.summary.resolvedViolationRules}`} />
+                <Chip color="warning" variant="filled" label={`Persistentes: ${compareResult.summary.persistentViolationRules}`} />
               </Stack>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }} sx={{ mt: 1.25 }}>
                 <Tooltip title="Generar resumen IA de esta comparacion">

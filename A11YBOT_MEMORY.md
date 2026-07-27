@@ -1,6 +1,6 @@
 # Memoria operativa - A11yBot
 
-Ultima actualizacion: 2026-05-04
+Ultima actualizacion: 2026-06-09
 
 ## Proposito del proyecto
 
@@ -22,6 +22,7 @@ A11yBot es un sistema de auditoria automatica de accesibilidad web para TFG:
 - `a11ybot-backend/README.md`: arquitectura y endpoints backend.
 - `a11ybot-frontend/README.md`: ejecucion y navegacion frontend.
 - `a11ybot-backend/A11yBot_CONTEXT.md`: contexto academico y funcional del proyecto.
+- `evidencias/EVIDENCIAS.md`: evidencias verificadas (dataset real, comparaciones, analitica IA, hallazgos y avisos de honestidad) para la memoria.
 
 ## Estado operativo actual
 
@@ -34,6 +35,14 @@ A11yBot es un sistema de auditoria automatica de accesibilidad web para TFG:
 - Los resumenes IA, explicaciones por regla y ramas A/B se apoyan en trazas persistidas para favorecer reutilizacion y trazabilidad.
 - Las reglas `incomplete` se tratan como revision manual, no como fallo confirmado ni como cumplimiento.
 - La documentacion vigente debe venir de memoria, roadmap y codigo actual; `A11yBot_CONTEXT.md` es contexto academico, no un snapshot tecnico congelado.
+
+## Verificacion y hallazgos (2026-06-09)
+
+- Verificacion reproducible OK: backend build, 41/41 unitarias, 6/6 e2e; frontend typecheck y build (warning de bundle >500 kB conocido y no bloqueante).
+- Evidencia real recogida y consolidada en `evidencias/` (15 auditorias, comparaciones before/after, 31 trazas IA). Detalle en `evidencias/EVIDENCIAS.md`.
+- Hallazgo IA (A/B): heuristico y OpenAI producen la misma priorizacion sobre la misma evidencia; el LLM aporta redaccion, no mejores decisiones. Refuerza "IA como asistencia" y justifica el fallback.
+- Robustez demostrada: gpt-5.5 fallo por incompatibilidad de `temperature` y por timeout; el fallback heuristico siguio entregando resultado. El experimento gpt-5.5 se descarta como feature; `temperature` vuelve a 0.2 (valor afinado para gpt-4o-mini).
+- Aviso de honestidad: "ocurrencias totales" incluye passes/incomplete; usar "ocurrencias de violacion" para hablar de problemas.
 
 ## Prioridades activas
 

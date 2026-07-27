@@ -5,7 +5,10 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AxeBuilder } from '@axe-core/playwright';
+// AxeBuilder de @axe-core/playwright no se usa directamente: inyecta axe en
+// todos los frames de Playwright (incluyendo cross-origin), lo que provoca
+// errores de 'instanceof not callable' en getRootNode2. Se usa addScriptTag
+// + page.evaluate con iframes:false para evitarlo (ver executeAuditWithRetries).
 import { Prisma } from '@prisma/client';
 import { Browser, BrowserContext, Page, chromium } from 'playwright';
 import { LookupAddress, promises as dns } from 'node:dns';
@@ -94,7 +97,7 @@ export class AuditService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
-    this.defaultTimeoutMs = this.getPositiveInt('AUDIT_TIMEOUT_MS', 10000);
+    this.defaultTimeoutMs = this.getPositiveInt('AUDIT_TIMEOUT_MS', 30000);
     this.maxRetries = this.getPositiveInt('AUDIT_MAX_RETRIES', 1);
     this.retryDelayMs = this.getPositiveInt('AUDIT_RETRY_DELAY_MS', 500);
     this.maxConcurrentGlobal = this.getPositiveInt('AUDIT_MAX_CONCURRENT', 2);
@@ -130,10 +133,8 @@ export class AuditService {
       context = await browser.newContext();
       page = await context.newPage();
 
-      const { axeResults, attemptsUsed } = await this.executeAuditWithRetries(
-        page,
-        normalizedUrl,
-      );
+      const { axeResults, attemptsUsed, partial } =
+        await this.executeAuditWithRetries(page, normalizedUrl);
 
       const { rules, occurrences } = this.normalize(axeResults);
       const timestamp = new Date();
@@ -145,6 +146,16 @@ export class AuditService {
         rules,
         occurrences,
       );
+
+      if (partial) {
+        await this.prisma.audit.update({
+          where: { id: auditId },
+          data: {
+            notes:
+              'Análisis parcial: la página usa frameset HTML4 o shadow DOM con contextos cross-window no compatibles con axe-core. Los resultados pueden estar incompletos.',
+          },
+        });
+      }
 
       this.logger.log(
         `audit.completed auditId=${auditId} host=${host} attempts=${attemptsUsed} rules=${rules.length} occurrences=${occurrences.length}`,
@@ -395,6 +406,7 @@ export class AuditService {
   ): Promise<{
     axeResults: AxeResultsByType;
     attemptsUsed: number;
+    partial?: boolean;
   }> {
     const totalAttempts = this.maxRetries + 1;
     let lastError: unknown = null;
@@ -402,13 +414,65 @@ export class AuditService {
     for (let attempt = 1; attempt <= totalAttempts; attempt += 1) {
       const start = Date.now();
       try {
+        // 'load' en lugar de 'networkidle': sitios con analítica/websockets nunca
+        // alcanzan networkidle y agotarían el timeout.
         await page.goto(url, {
-          waitUntil: 'networkidle',
+          waitUntil: 'load',
           timeout: this.defaultTimeoutMs,
         });
-        const axeResults = (await new AxeBuilder({
-          page,
-        }).analyze()) as AxeResultsByType;
+        // @axe-core/playwright inyecta axe en TODOS los frames de Playwright
+        // antes de ejecutar (incluyendo iframes cross-origin/sandboxed). En
+        // algunos frames el constructor DOM Node difiere entre contextos de
+        // ventana, haciendo fallar el polyfill getRootNode2 con
+        // 'instanceof not callable'. Solución: inyectar axe-core solo en el
+        // frame principal y llamar axe.run() con iframes:false — axe nunca
+        // intenta evaluar en sub-frames.
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const axeCorePath: string = require.resolve('axe-core');
+        await page.addScriptTag({ path: axeCorePath });
+        // Eliminar frames del DOM antes de analizar: axe.run() usa el DOM (no
+        // page.frames()), por lo que la eliminación es efectiva aquí.
+        await page.evaluate(() => {
+          document
+            .querySelectorAll('frame, iframe')
+            .forEach((el) => el.remove());
+        });
+        // Ejecutar axe con try-catch en el contexto del browser: algunas páginas
+        // (p.ej. con frameset HTML4 o shadow DOM con contextos cross-window)
+        // hacen fallar el polyfill getRootNode2 de axe con 'instanceof not
+        // callable'. Si ocurre, se retornan resultados vacíos marcados como
+        // parciales; la auditoría se completa con una nota explicativa.
+        const axeEval = (await page.evaluate(async () => {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const res = await (window as any).axe.run(document, {
+              iframes: false,
+            });
+            return { ok: true as const, results: res };
+          } catch (e) {
+            return {
+              ok: false as const,
+              error: e instanceof Error ? e.message : String(e),
+            };
+          }
+        })) as
+          | { ok: true; results: AxeResultsByType }
+          | { ok: false; error: string };
+
+        if (!axeEval.ok) {
+          if (axeEval.error.includes('instanceof')) {
+            this.logger.warn(
+              `audit.axe.incompatible url=${url} reason="${axeEval.error}"`,
+            );
+            return {
+              axeResults: { violations: [], passes: [], incomplete: [] },
+              attemptsUsed: attempt,
+              partial: true,
+            };
+          }
+          throw new Error(axeEval.error);
+        }
+        const axeResults = axeEval.results;
         const elapsed = Date.now() - start;
         this.logger.log(
           `audit.attempt.ok url=${url} attempt=${attempt}/${totalAttempts} elapsedMs=${elapsed}`,

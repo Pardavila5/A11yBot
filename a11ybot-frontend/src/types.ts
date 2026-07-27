@@ -22,6 +22,11 @@ export type AuditListItem = {
   timestamp: string;
   status?: string | null;
   notes?: string | null;
+  counts?: {
+    violations: number;
+    passes: number;
+    incomplete: number;
+  } | null;
 };
 
 export type AuditListResponse = {

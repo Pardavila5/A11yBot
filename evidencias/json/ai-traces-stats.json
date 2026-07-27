@@ -1,0 +1,35 @@
+{
+  "window": {
+    "sinceDays": 365,
+    "total": 31
+  },
+  "usage": {
+    "byOperation": {
+      "compare_summary": 10,
+      "audit_summary": 9,
+      "rule_explain": 12
+    },
+    "bySource": {
+      "heuristic": 11,
+      "openai": 20
+    },
+    "byModel": {
+      "gpt-5.5": 2,
+      "gpt-4o-mini-2024-07-18": 20
+    },
+    "fallbackRate": 0.3548387096774194,
+    "openAiRate": 0.6451612903225806
+  },
+  "latency": {
+    "avgMs": 4523,
+    "openAiAvgMs": 6225
+  },
+  "attempts": {
+    "byStatus": {
+      "timeout": 1,
+      "forced_heuristic": 9,
+      "http_error": 1,
+      "success": 20
+    }
+  }
+}

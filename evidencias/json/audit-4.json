@@ -1,0 +1,10 @@
+{
+  "id": 4,
+  "url": "https://example.com/",
+  "timestamp": "2026-05-04T19:17:37.359Z",
+  "status": "failed",
+  "notes": "page.goto: net::ERR_CONNECTION_CLOSED at https://example.com/\nCall log:\n\u001b[2m  - navigating to \"https://example.com/\", waiting until \"networkidle\"\u001b[22m\n",
+  "rawJson": {},
+  "rules": [],
+  "occurrences": []
+}

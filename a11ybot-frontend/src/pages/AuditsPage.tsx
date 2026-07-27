@@ -29,6 +29,8 @@ import {
   metricLabels,
   priorityChipColor,
   priorityLabel,
+  severityChipSx,
+  wcagTagInfo,
 } from '../ui/aiSummaryPresentation';
 import { useToast } from '../ui/ToastProvider';
 import {
@@ -62,6 +64,9 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 
 const DEFAULT_PAGE_SIZE = 5;
 
@@ -768,14 +773,7 @@ export default function AuditsPage() {
         </Stack>
       </Stack>
 
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', lg: '1.1fr 0.9fr' },
-          gap: 2,
-          mb: 2,
-        }}
-      >
+      <Box sx={{ mb: 2 }}>
         <Card variant="outlined">
           <CardContent>
             <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>
@@ -796,8 +794,22 @@ export default function AuditsPage() {
                 disabled={loading}
               />
               <Tooltip title="Lanzar nueva auditoría">
-                <span>
-                  <Button type="submit" variant="contained" disabled={loading}>
+                <span style={{ display: 'flex' }}>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    color="primary"
+                    size="large"
+                    disabled={loading}
+                    startIcon={<TravelExploreIcon />}
+                    sx={{
+                      fontWeight: 800,
+                      px: 3,
+                      minWidth: { sm: 180 },
+                      width: { xs: '100%', sm: 'auto' },
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
                     {auditing ? 'Auditando…' : 'Auditar'}
                   </Button>
                 </span>
@@ -805,33 +817,6 @@ export default function AuditsPage() {
             </Stack>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1.25 }}>
               Se ejecuta Playwright + axe-core desde el backend y se persiste en la base de datos.
-            </Typography>
-          </CardContent>
-        </Card>
-
-        <Card variant="outlined">
-          <CardContent>
-            <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>
-              Acciones
-            </Typography>
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              <Tooltip title="Recargar la página actual">
-                <span>
-                  <Button variant="outlined" onClick={() => void refreshAudits(page)} disabled={loading}>
-                    Recargar
-                  </Button>
-                </span>
-              </Tooltip>
-              <Tooltip title="Eliminar todas las auditorías">
-                <span>
-                  <Button variant="contained" color="error" onClick={() => void handleDeleteAll()} disabled={loading || audits.length === 0}>
-                    Borrar histórico
-                  </Button>
-                </span>
-              </Tooltip>
-            </Stack>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1.25 }}>
-              Página {page} / {totalPages} ({total} auditorías)
             </Typography>
           </CardContent>
         </Card>
@@ -847,11 +832,50 @@ export default function AuditsPage() {
       >
         <Card variant="outlined">
           <CardContent>
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                Histórico
-              </Typography>
-              {listLoading && <Typography variant="caption" color="text.secondary">Cargando…</Typography>}
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              justifyContent="space-between"
+              alignItems={{ sm: 'center' }}
+              spacing={1}
+            >
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                  Histórico
+                </Typography>
+                {listLoading && <Typography variant="caption" color="text.secondary">Cargando…</Typography>}
+              </Stack>
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                <Typography variant="caption" color="text.secondary">
+                  Página {page} / {totalPages} ({total})
+                </Typography>
+                <Tooltip title="Recargar la página actual">
+                  <span>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<RefreshIcon />}
+                      onClick={() => void refreshAudits(page)}
+                      disabled={loading}
+                    >
+                      Recargar
+                    </Button>
+                  </span>
+                </Tooltip>
+                <Tooltip title="Eliminar todas las auditorías">
+                  <span>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="error"
+                      startIcon={<DeleteOutlineIcon />}
+                      onClick={() => void handleDeleteAll()}
+                      disabled={loading || audits.length === 0}
+                    >
+                      Borrar
+                    </Button>
+                  </span>
+                </Tooltip>
+              </Stack>
             </Stack>
             <Divider sx={{ my: 1 }} />
 
@@ -945,6 +969,37 @@ export default function AuditsPage() {
                             {chip && (
                               <Chip size="small" label={chip.label} color={chip.color} variant={chip.variant} />
                             )}
+                            {a.counts && (
+                              <>
+                                <Tooltip title="Violaciones">
+                                  <Chip
+                                    size="small"
+                                    variant="outlined"
+                                    icon={<ErrorOutlineIcon />}
+                                    label={a.counts.violations}
+                                    sx={{ '& .MuiChip-icon': { color: 'error.main' } }}
+                                  />
+                                </Tooltip>
+                                <Tooltip title="Revisión manual">
+                                  <Chip
+                                    size="small"
+                                    variant="outlined"
+                                    icon={<HelpOutlineIcon />}
+                                    label={a.counts.incomplete}
+                                    sx={{ '& .MuiChip-icon': { color: 'text.disabled' } }}
+                                  />
+                                </Tooltip>
+                                <Tooltip title="Correctas">
+                                  <Chip
+                                    size="small"
+                                    variant="outlined"
+                                    icon={<CheckCircleOutlineIcon />}
+                                    label={a.counts.passes}
+                                    sx={{ '& .MuiChip-icon': { color: 'success.main' } }}
+                                  />
+                                </Tooltip>
+                              </>
+                            )}
                             {a.notes && <Chip size="small" label={a.notes} variant="outlined" />}
                           </Stack>
                         </Box>
@@ -1019,6 +1074,29 @@ export default function AuditsPage() {
                       sx={CHIP_PILL_SX}
                     />
                   )}
+                </Stack>
+                <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 0.75 }}>
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    icon={<CheckCircleOutlineIcon />}
+                    label={`Correctas: ${detailCounts.passes}`}
+                    sx={{ ...CHIP_PILL_SX, '& .MuiChip-icon': { color: 'success.main' } }}
+                  />
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    icon={<HelpOutlineIcon />}
+                    label={`Revisión manual: ${detailCounts.incomplete}`}
+                    sx={{ ...CHIP_PILL_SX, '& .MuiChip-icon': { color: 'text.disabled' } }}
+                  />
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    icon={<ErrorOutlineIcon />}
+                    label={`Violaciones: ${detailCounts.violations}`}
+                    sx={{ ...CHIP_PILL_SX, '& .MuiChip-icon': { color: 'error.main' } }}
+                  />
                 </Stack>
                 {detail.notes && (
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
@@ -1221,14 +1299,16 @@ export default function AuditsPage() {
                       fontWeight: 800,
                       fontSize: { xs: '0.96rem', md: '1rem' },
                       px: 1.5,
-                      color: 'text.secondary',
-                    },
-                    '& .Mui-selected': {
-                      color: 'text.primary',
                     },
                     '& .MuiTabs-indicator': {
                       height: 3,
                       borderRadius: 999,
+                      bgcolor:
+                        detailTab === 'violations'
+                          ? 'error.main'
+                          : detailTab === 'passes'
+                            ? 'success.main'
+                            : 'text.secondary',
                     },
                   }}
                   variant="fullWidth"
@@ -1238,18 +1318,21 @@ export default function AuditsPage() {
                     iconPosition="start"
                     label={`Violaciones (${detailCounts.violations})`}
                     value="violations"
+                    sx={{ color: 'error.main', '&.Mui-selected': { color: 'error.main' } }}
                   />
                   <Tab
                     icon={<HelpOutlineIcon fontSize="small" />}
                     iconPosition="start"
                     label={`Revisión manual (${detailCounts.incomplete})`}
                     value="incomplete"
+                    sx={{ color: 'text.secondary', '&.Mui-selected': { color: 'text.primary' } }}
                   />
                   <Tab
                     icon={<CheckCircleOutlineIcon fontSize="small" />}
                     iconPosition="start"
                     label={`Correctas (${detailCounts.passes})`}
                     value="passes"
+                    sx={{ color: 'success.main', '&.Mui-selected': { color: 'success.main' } }}
                   />
                 </Tabs>
 
@@ -1284,13 +1367,14 @@ export default function AuditsPage() {
                               <Typography variant="subtitle1" sx={{ fontWeight: 800, flex: 1 }}>
                                 {r.ruleId}
                               </Typography>
-                              <Chip
-                                size="small"
-                                label={impactLabel(r.impact)}
-                                color={impactChipColor(r.impact)}
-                                variant="outlined"
-                                sx={SEVERITY_CHIP_SX}
-                              />
+                              {r.type !== 'passes' && (
+                                <Chip
+                                  size="small"
+                                  label={impactLabel(r.impact)}
+                                  variant="filled"
+                                  sx={{ ...SEVERITY_CHIP_SX, ...severityChipSx(r.impact), fontWeight: 700 }}
+                                />
+                              )}
                             </Stack>
                           </AccordionSummary>
                           <AccordionDetails>
@@ -1298,9 +1382,14 @@ export default function AuditsPage() {
                               {r.description}
                             </Typography>
                             <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
-                              {r.wcag.map((t) => (
-                                <Chip key={t} size="small" label={t} variant="outlined" />
-                              ))}
+                              {r.wcag.map((t) => {
+                                const info = wcagTagInfo(t);
+                                return (
+                                  <Tooltip key={t} title={info.title}>
+                                    <Chip size="small" label={info.label} variant="outlined" />
+                                  </Tooltip>
+                                );
+                              })}
                             </Stack>
                             <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
                               <Tooltip title="Abrir documentación de la regla">

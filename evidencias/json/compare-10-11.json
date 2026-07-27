@@ -1,0 +1,531 @@
+{
+  "audits": {
+    "old": {
+      "id": 10,
+      "url": "https://www.washington.edu/accesscomputing/AU/before.html",
+      "timestamp": "2026-06-09T19:02:19.603Z"
+    },
+    "new": {
+      "id": 11,
+      "url": "https://www.washington.edu/accesscomputing/AU/after.html",
+      "timestamp": "2026-06-09T19:03:43.677Z"
+    }
+  },
+  "summary": {
+    "totalViolationRulesOld": 8,
+    "totalViolationRulesNew": 0,
+    "totalOccurrencesOld": 50,
+    "totalOccurrencesNew": 0,
+    "deltaViolationRules": -8,
+    "newViolationRules": 0,
+    "resolvedViolationRules": 8,
+    "persistentViolationRules": 0
+  },
+  "newViolations": [],
+  "resolvedViolations": [
+    {
+      "ruleId": "color-contrast",
+      "impact": "serious",
+      "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+      "wcag": [
+        "wcag2aa",
+        "wcag143"
+      ],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 2572,
+          "htmlSnippet": "<a href=\"#\">About</a>",
+          "target": [
+            "li:nth-child(1) > a[href=\"#\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.52 (foreground color: #8a94a8, background color: #e9e9ed, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "id": 2573,
+          "htmlSnippet": "<a href=\"#\">Academics</a>",
+          "target": [
+            "li:nth-child(2) > a[href=\"#\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.52 (foreground color: #8a94a8, background color: #e9e9ed, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "id": 2574,
+          "htmlSnippet": "<a href=\"#\">Admissions</a>",
+          "target": [
+            "li:nth-child(3) > a[href=\"#\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.52 (foreground color: #8a94a8, background color: #e9e9ed, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "id": 2575,
+          "htmlSnippet": "<a href=\"#\">Visitors</a>",
+          "target": [
+            "li:nth-child(4) > a[href=\"#\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.52 (foreground color: #8a94a8, background color: #e9e9ed, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+        }
+      ]
+    },
+    {
+      "ruleId": "html-has-lang",
+      "impact": "serious",
+      "description": "Ensure every HTML document has a lang attribute",
+      "help": "<html> element must have a lang attribute",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/html-has-lang?application=playwright",
+      "wcag": [
+        "wcag2a",
+        "wcag311"
+      ],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 2576,
+          "htmlSnippet": "<html>",
+          "target": [
+            "html"
+          ],
+          "failureSummary": "Fix any of the following:\n  The <html> element does not have a lang attribute"
+        }
+      ]
+    },
+    {
+      "ruleId": "image-alt",
+      "impact": "critical",
+      "description": "Ensure <img> elements have alternative text or a role of none or presentation",
+      "help": "Images must have alternative text",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/image-alt?application=playwright",
+      "wcag": [
+        "wcag2a",
+        "wcag111"
+      ],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 2577,
+          "htmlSnippet": "<img src=\"images/carousel/slide1.jpg\">",
+          "target": [
+            "img[src$=\"slide1.jpg\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 2578,
+          "htmlSnippet": "<img src=\"images/captcha.png\">",
+          "target": [
+            "img[src$=\"captcha.png\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        }
+      ]
+    },
+    {
+      "ruleId": "label",
+      "impact": "critical",
+      "description": "Ensure every form element has a label",
+      "help": "Form elements must have labels",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/label?application=playwright",
+      "wcag": [
+        "wcag2a",
+        "wcag412"
+      ],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 2579,
+          "htmlSnippet": "<input type=\"text\" name=\"name\">",
+          "target": [
+            "input[name=\"name\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element has no placeholder attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 2580,
+          "htmlSnippet": "<input type=\"text\" name=\"email\">",
+          "target": [
+            "input[name=\"email\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element has no placeholder attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 2581,
+          "htmlSnippet": "<input type=\"text\" name=\"country\">",
+          "target": [
+            "input[name=\"country\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element has no placeholder attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 2582,
+          "htmlSnippet": "<input type=\"checkbox\" name=\"major_cs\">",
+          "target": [
+            "input[name=\"major_cs\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element has no placeholder attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 2583,
+          "htmlSnippet": "<input type=\"checkbox\" name=\"major_eng\">",
+          "target": [
+            "input[name=\"major_eng\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element has no placeholder attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 2584,
+          "htmlSnippet": "<input type=\"checkbox\" name=\"major_econ\">",
+          "target": [
+            "input[name=\"major_econ\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element has no placeholder attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 2585,
+          "htmlSnippet": "<input type=\"checkbox\" name=\"major_phy\">",
+          "target": [
+            "input[name=\"major_phy\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element has no placeholder attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 2586,
+          "htmlSnippet": "<input type=\"checkbox\" name=\"major_psy\">",
+          "target": [
+            "input[name=\"major_psy\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element has no placeholder attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 2587,
+          "htmlSnippet": "<input type=\"checkbox\" name=\"major_sp\">",
+          "target": [
+            "input[name=\"major_sp\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element has no placeholder attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        },
+        {
+          "id": 2588,
+          "htmlSnippet": "<input type=\"text\" name=\"captcha\">",
+          "target": [
+            "input[name=\"captcha\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element has no placeholder attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+        }
+      ]
+    },
+    {
+      "ruleId": "landmark-one-main",
+      "impact": "moderate",
+      "description": "Ensure the document has a main landmark",
+      "help": "Document should have one main landmark",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/landmark-one-main?application=playwright",
+      "wcag": [],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 2589,
+          "htmlSnippet": "<html>",
+          "target": [
+            "html"
+          ],
+          "failureSummary": "Fix all of the following:\n  Document does not have a main landmark"
+        }
+      ]
+    },
+    {
+      "ruleId": "link-in-text-block",
+      "impact": "serious",
+      "description": "Ensure links are distinguished from surrounding text in a way that does not rely on color",
+      "help": "Links must be distinguishable without relying on color",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/link-in-text-block?application=playwright",
+      "wcag": [
+        "wcag2a",
+        "wcag141"
+      ],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 2590,
+          "htmlSnippet": "<a href=\"info.html\">click here</a>",
+          "target": [
+            "p:nth-child(9) > a[href$=\"info.html\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  The link has insufficient color contrast of 2.81:1 with the surrounding text. (Minimum contrast is 3:1, link text: #555555, surrounding text: #000000)\n  The link has no styling (such as underline) to distinguish it from the surrounding text"
+        },
+        {
+          "id": 2591,
+          "htmlSnippet": "<a href=\"after.html\">click here</a>",
+          "target": [
+            "p:nth-child(9) > a[href$=\"after.html\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  The link has insufficient color contrast of 2.81:1 with the surrounding text. (Minimum contrast is 3:1, link text: #555555, surrounding text: #000000)\n  The link has no styling (such as underline) to distinguish it from the surrounding text"
+        },
+        {
+          "id": 2592,
+          "htmlSnippet": "<a href=\"cheatsheet.html\">click here</a>",
+          "target": [
+            "a[href$=\"cheatsheet.html\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  The link has insufficient color contrast of 2.81:1 with the surrounding text. (Minimum contrast is 3:1, link text: #555555, surrounding text: #000000)\n  The link has no styling (such as underline) to distinguish it from the surrounding text"
+        }
+      ]
+    },
+    {
+      "ruleId": "page-has-heading-one",
+      "impact": "moderate",
+      "description": "Ensure that the page, or at least one of its frames contains a level-one heading",
+      "help": "Page should contain a level-one heading",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/page-has-heading-one?application=playwright",
+      "wcag": [],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 2593,
+          "htmlSnippet": "<html>",
+          "target": [
+            "html"
+          ],
+          "failureSummary": "Fix all of the following:\n  Page must have a level-one heading"
+        }
+      ]
+    },
+    {
+      "ruleId": "region",
+      "impact": "moderate",
+      "description": "Ensure all page content is contained by landmarks",
+      "help": "All page content should be contained by landmarks",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/region?application=playwright",
+      "wcag": [],
+      "type": "violations",
+      "occurrences": [
+        {
+          "id": 2594,
+          "htmlSnippet": "<img id=\"logo\" src=\"images/au123456789.gif\" alt=\"au123456789.gif\" width=\"441\" height=\"90\">",
+          "target": [
+            "#logo"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2595,
+          "htmlSnippet": "<a href=\"#\">About</a>",
+          "target": [
+            "li:nth-child(1) > a[href=\"#\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2596,
+          "htmlSnippet": "<a href=\"#\">Academics</a>",
+          "target": [
+            "li:nth-child(2) > a[href=\"#\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2597,
+          "htmlSnippet": "<a href=\"#\">Admissions</a>",
+          "target": [
+            "li:nth-child(3) > a[href=\"#\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2598,
+          "htmlSnippet": "<a href=\"#\">Visitors</a>",
+          "target": [
+            "li:nth-child(4) > a[href=\"#\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2599,
+          "htmlSnippet": "<div class=\"slide current\">\n            <img src=\"images/carousel/slide1.jpg\">\n            <div class=\"caption\">A modern shool</div>\n          </div>",
+          "target": [
+            ".current"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2600,
+          "htmlSnippet": "<div class=\"heading\">Welcome!</div>",
+          "target": [
+            ".heading:nth-child(2)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2601,
+          "htmlSnippet": "<p>",
+          "target": [
+            "p:nth-child(3)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2602,
+          "htmlSnippet": "<img class=\"hr\" src=\"images/line_gradient.gif\" alt=\"horizontal line graphic\">",
+          "target": [
+            ".hr[src$=\"line_gradient.gif\"][alt=\"horizontal line graphic\"]:nth-child(4)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2603,
+          "htmlSnippet": "<div class=\"heading\">Bienvenido!</div>",
+          "target": [
+            ".heading:nth-child(5)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2604,
+          "htmlSnippet": "<p>",
+          "target": [
+            "p:nth-child(6)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2605,
+          "htmlSnippet": "<img class=\"hr\" src=\"images/line_gradient.gif\" alt=\"horizontal line graphic\">",
+          "target": [
+            ".hr[src$=\"line_gradient.gif\"][alt=\"horizontal line graphic\"]:nth-child(7)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2606,
+          "htmlSnippet": "<div class=\"heading\">Can you spot the barriers?</div>",
+          "target": [
+            ".heading:nth-child(8)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2607,
+          "htmlSnippet": "<p>",
+          "target": [
+            "p:nth-child(9)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2608,
+          "htmlSnippet": "<img class=\"hr\" src=\"images/line_gradient.gif\" alt=\"horizontal line graphic\">",
+          "target": [
+            ".hr[src$=\"line_gradient.gif\"][alt=\"horizontal line graphic\"]:nth-child(10)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2609,
+          "htmlSnippet": "<div class=\"heading\">AU Enrollment Trends</div>",
+          "target": [
+            ".heading:nth-child(11)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2610,
+          "htmlSnippet": "<table id=\"enrollment\">",
+          "target": [
+            "#enrollment"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2611,
+          "htmlSnippet": "<img class=\"hr\" src=\"images/line_gradient.gif\" alt=\"horizontal line graphic\">",
+          "target": [
+            ".hr[src$=\"line_gradient.gif\"][alt=\"horizontal line graphic\"]:nth-child(13)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2612,
+          "htmlSnippet": "<div class=\"heading\">AU Video</div>",
+          "target": [
+            ".heading:nth-child(14)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2613,
+          "htmlSnippet": "<video src=\"video/au-promo.mp4\" poster=\"video/au-promo.jpg\" controls=\"\"></video>",
+          "target": [
+            "video"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2614,
+          "htmlSnippet": "<div class=\"heading\">Apply Now!</div>",
+          "target": [
+            "#appForm > .heading"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2615,
+          "htmlSnippet": "<p class=\"required reqExample\">(required fields are in blue)</p>",
+          "target": [
+            ".reqExample"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2616,
+          "htmlSnippet": "<div class=\"required\">\n          Name:\n          <input type=\"text\" name=\"name\">\n        </div>",
+          "target": [
+            "form > .required:nth-child(2)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2617,
+          "htmlSnippet": "<div class=\"required\">\n          Email:\n          <input type=\"text\" name=\"email\">\n        </div>",
+          "target": [
+            ".required:nth-child(3)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2618,
+          "htmlSnippet": "<div>\n          Country:\n          <input type=\"text\" name=\"country\">\n        </div>",
+          "target": [
+            "form > div:nth-child(4)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2619,
+          "htmlSnippet": "<div><b>Desired major(s):</b></div>",
+          "target": [
+            "form > div:nth-child(5)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2620,
+          "htmlSnippet": "<div id=\"majors\">",
+          "target": [
+            "#majors"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        },
+        {
+          "id": 2621,
+          "htmlSnippet": "<div id=\"captcha\">\n          <b>Security Test</b>\n          <p>Please enter the two words you see below, separated by a space</p>\n          <input type=\"text\" name=\"captcha\">\n          <img src=\"images/captcha.png\">\n        </div>",
+          "target": [
+            "#captcha"
+          ],
+          "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        }
+      ]
+    }
+  ],
+  "persistentViolations": []
+}
