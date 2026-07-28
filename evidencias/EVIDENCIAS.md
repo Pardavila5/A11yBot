@@ -13,7 +13,7 @@ runtime, trazas IA y estadisticas). Las capturas en `evidencias/screenshots/`.
 |---|---|
 | Fecha verificacion inicial (UTC) | 2026-06-09 |
 | Fecha iteracion UI + robustez (UTC) | 2026-07-05 |
-| Commit base | `89a1f10` (verificacion inicial) |
+| Commit base | `89a1f10` (verificacion inicial) · `a5d1438` (correccion mocks) |
 | Node | v24.14.1 |
 | npm | 11.11.0 |
 | Playwright (Chromium) | 1.57.0 |

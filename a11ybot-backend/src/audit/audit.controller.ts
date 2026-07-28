@@ -110,7 +110,7 @@ export class AuditController {
       await tx.rule.deleteMany();
       await tx.audit.deleteMany();
       await tx.website.deleteMany();
-      // Reset autoincrement counters en SQLite
+      // Reiniciar contadores de autoincremento en SQLite
       await tx.$executeRawUnsafe(
         `DELETE FROM sqlite_sequence WHERE name IN ('AiTrace','Audit','Website','Rule','Occurrence')`,
       );
