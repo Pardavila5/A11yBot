@@ -12,6 +12,10 @@ jest.mock('playwright', () => {
   const mockPage = {
     goto: jest.fn().mockResolvedValue(undefined),
     close: jest.fn().mockResolvedValue(undefined),
+    addScriptTag: jest.fn().mockResolvedValue(undefined),
+    evaluate: jest
+      .fn()
+      .mockResolvedValue({ ok: true, results: { violations: [], passes: [], incomplete: [] } }),
   };
   const mockContext = {
     newPage: jest.fn().mockResolvedValue(mockPage),
@@ -190,6 +194,8 @@ describe('AuditService', () => {
     playwrightMock.chromium.launch.mockClear();
     playwrightMock.__mock.mockPage.goto.mockClear();
     playwrightMock.__mock.mockPage.close.mockClear();
+    playwrightMock.__mock.mockPage.addScriptTag.mockClear();
+    playwrightMock.__mock.mockPage.evaluate.mockClear();
     playwrightMock.__mock.mockContext.newPage.mockClear();
     playwrightMock.__mock.mockContext.close.mockClear();
     playwrightMock.__mock.mockBrowser.newContext.mockClear();
@@ -642,6 +648,10 @@ describe('AuditService', () => {
         .fn()
         .mockRejectedValueOnce(new Error('Timeout while loading'))
         .mockResolvedValueOnce(undefined),
+      addScriptTag: jest.fn().mockResolvedValue(undefined),
+      evaluate: jest
+        .fn()
+        .mockResolvedValue({ ok: true, results: { violations: [], passes: [], incomplete: [] } }),
     };
 
     const retried = await privateApi().executeAuditWithRetries(
@@ -701,27 +711,34 @@ describe('AuditService', () => {
     jest.spyOn(privateApi(), 'markAuditFailed').mockResolvedValue(undefined);
     jest.spyOn(privateApi(), 'sleep').mockResolvedValue(undefined);
 
-    axeMock.__mock.analyzeMock.mockResolvedValue({
-      violations: [
-        {
-          id: 'image-alt',
-          impact: 'serious',
-          description: 'Alt text required',
-          help: 'Add alt',
-          helpUrl: 'https://example.com/image-alt',
-          tags: ['wcag111'],
-          nodes: [
+    // AxeBuilder ya no se usa; axe-core se ejecuta vía page.evaluate.
+    // evaluate se llama dos veces: llamada 1 = eliminación de frames (descartada), llamada 2 = axe.run.
+    playwrightMock.__mock.mockPage.evaluate
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({
+        ok: true,
+        results: {
+          violations: [
             {
-              html: '<img>',
-              target: ['img.hero'],
-              failureSummary: 'Missing alt',
+              id: 'image-alt',
+              impact: 'serious',
+              description: 'Alt text required',
+              help: 'Add alt',
+              helpUrl: 'https://example.com/image-alt',
+              tags: ['wcag111'],
+              nodes: [
+                {
+                  html: '<img>',
+                  target: ['img.hero'],
+                  failureSummary: 'Missing alt',
+                },
+              ],
             },
           ],
+          passes: [],
+          incomplete: [],
         },
-      ],
-      passes: [],
-      incomplete: [],
-    });
+      });
 
     const result = await service.runAudit('https://example.com');
 

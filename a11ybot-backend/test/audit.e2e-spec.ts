@@ -9,11 +9,29 @@ import request from 'supertest';
 import type { App as SuperTestApp } from 'supertest/types';
 import { prepareE2eDatabase } from './e2e-db';
 
-// Mocks auto-contenidos (evitan problemas de hoisting)
+// Queue compartida entre el mock de playwright (evaluate) y el mock de
+// @axe-core/playwright (__mock.axeQueue). Prefijo 'mock' requerido por jest.
+const mockAxeResults: AxeResultsByType[] = [];
+
+// Mock de playwright: referencia mockAxeResults via prefijo 'mock' (compatible con hoisting de jest)
 jest.mock('playwright', () => {
+  // evaluate se llama dos veces por auditoría: 1ª = eliminación de frames
+  // (resultado descartado), 2ª = axe.run (devuelve el resultado real).
+  let mockEvalParity = 0;
+
   const mockPage = {
     goto: jest.fn().mockResolvedValue(undefined),
     close: jest.fn().mockResolvedValue(undefined),
+    addScriptTag: jest.fn().mockResolvedValue(undefined),
+    evaluate: jest.fn().mockImplementation(async () => {
+      mockEvalParity++;
+      if (mockEvalParity % 2 === 1) {
+        return undefined; // eliminación de frames; resultado ignorado
+      }
+      const results =
+        mockAxeResults.shift() ?? { violations: [], passes: [], incomplete: [] };
+      return { ok: true, results };
+    }),
   };
   const mockContext = {
     newPage: jest.fn().mockResolvedValue(mockPage),
@@ -27,20 +45,23 @@ jest.mock('playwright', () => {
     chromium: {
       launch: jest.fn().mockResolvedValue(mockBrowser),
     },
-    __mock: { mockPage, mockContext, mockBrowser },
+    __mock: {
+      mockPage,
+      mockContext,
+      mockBrowser,
+      resetEvalParity: () => {
+        mockEvalParity = 0;
+      },
+    },
   };
 });
 
 jest.mock('@axe-core/playwright', () => {
-  const axeQueue: AxeResultsByType[] = [];
-  const analyzeMock = jest.fn(async () => {
-    return axeQueue.shift() ?? { violations: [], passes: [], incomplete: [] };
-  });
+  // AxeBuilder ya no se usa en la implementación; la cola se expone para que
+  // los tests puedan seguir usando axeMock.__mock.axeQueue.push(...).
   return {
-    AxeBuilder: jest.fn().mockImplementation(() => ({
-      analyze: analyzeMock,
-    })),
-    __mock: { axeQueue, analyzeMock },
+    AxeBuilder: jest.fn(),
+    __mock: { axeQueue: mockAxeResults },
   };
 });
 
@@ -123,12 +144,15 @@ describe('Audits e2e', () => {
   });
 
   beforeEach(async () => {
-    const { axeQueue, analyzeMock } = axeMock.__mock;
+    const { axeQueue } = axeMock.__mock;
     axeQueue.length = 0;
-    analyzeMock.mockClear();
 
-    const { mockPage, mockContext, mockBrowser } = playwrightMock.__mock;
+    const { mockPage, mockContext, mockBrowser, resetEvalParity } =
+      playwrightMock.__mock;
+    resetEvalParity();
     mockPage.goto.mockClear();
+    mockPage.addScriptTag.mockClear();
+    mockPage.evaluate.mockClear();
     mockContext.newPage.mockClear();
     mockBrowser.newContext.mockClear();
 
